@@ -12,7 +12,7 @@ for column in ['startdate', 'enddate', 'admittime', 'dischtime']:
 drugs = df.loc[
     df['subject_id'] == 10006, ['admittime', 'dischtime', 'diagnosis', 'admission_location', 'discharge_location',
                                 'drug', 'drug_type', 'startdate', 'enddate']]
-drugs = df.loc[:10, :]
+drugs = df.loc[:3, :]
 
 
 # TODO: other search/graph trees, herusitic function, searching algorithm (modified or existing).
@@ -64,7 +64,7 @@ class MakeGraph:
                 # TODO: 1,10
                 if self.graph.has_edge(row_i.drug, row_j.drug):
                     continue
-                print(i, j)  # TODO:  1, 10 and 10, 1 both exist, inspect.
+                # print(i, j)  # TODO:  1, 10 and 10, 1 both exist, inspect.
                 total_intersection_days = self.calculate_date_overlap(row_i, row_j)
                 if total_intersection_days:
                     patient_stay_length_days = (self.dischtime - self.admittime).days + 1

@@ -1,3 +1,5 @@
 .idea/
 venv/
 .gitignore
+data/
+__pycache__/

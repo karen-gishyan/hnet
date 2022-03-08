@@ -5,6 +5,34 @@ import numpy as np
 from typing import Dict
 
 
+def diagnosis_value_counts(value_count=100) -> pd.Series:
+    """
+    Select
+    :param value_count:
+    :return:
+    """
+    df = pd.read_csv('data/ADMISSIONS.csv')
+    unique_values = df.DIAGNOSIS.value_counts()
+    unique_values = unique_values[unique_values >= value_count]  # at least 100 cases for each diagnosis type
+    return unique_values
+
+
+def merge_admissions_prescriptions(diagnosis_value_counts: pd.Series) -> pd.DataFrame:
+    """
+    Merge dfs by first selecting admissions where each diagnosis appears at least n number of times (default n=100)
+    """
+    admissions = pd.read_csv('data/ADMISSIONS.csv')
+    prescriptions = pd.read_csv('data/PRESCRIPTIONS.csv')
+    admissions = admissions[admissions.DIAGNOSIS.isin(diagnosis_value_counts.index)]
+    df = pd.merge(admissions, prescriptions, on=['HADM_ID']).drop(['SUBJECT_ID_y', 'ROW_ID_y'], axis=1)
+    df = df.rename(
+        columns={'SUBJECT_ID_x': 'SUBJECT_ID', 'ROW_ID_x': 'ROW_ID'})
+    df = df.rename(columns=str.lower)
+    for column in ['startdate', 'enddate', 'admittime', 'dischtime']:
+        df[column] = pd.to_datetime(df[column])
+    return df
+
+
 def tree_preprocess() -> pd.DataFrame:
     pass
 
@@ -17,6 +45,7 @@ def model_preprocess() -> pd.DataFrame:
     otherwise 0.
     :return: dataframe of drugs as features for each patient to be used for model training.
     """
+    # 15692 unique diagnosis
     admissions = pd.read_csv('data/ADMISSIONS.csv')
     prescriptions = pd.read_csv('data/PRESCRIPTIONS.csv', nrows=10000)
 

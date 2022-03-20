@@ -3,6 +3,7 @@ from sklearn.linear_model import LinearRegression
 import pandas as pd
 import numpy as np
 from typing import Dict
+import json
 
 
 def diagnosis_value_counts(value_count=100) -> pd.Series:
@@ -13,7 +14,8 @@ def diagnosis_value_counts(value_count=100) -> pd.Series:
     """
     df = pd.read_csv('data/ADMISSIONS.csv')
     unique_values = df.DIAGNOSIS.value_counts()
-    unique_values = unique_values[unique_values >= value_count]  # at least 100 cases for each diagnosis type
+    # TODO >= is correct, others are for experimentation
+    unique_values = unique_values[unique_values <= value_count]  # at least 100 cases for each diagnosis type
     return unique_values
 
 
@@ -94,4 +96,8 @@ def svc(df) -> Dict:
         model.fit(X, y)
         feature_to_weight = dict(zip(X.columns, model.coef_))
         weights.update({type: feature_to_weight})
+
+    with open('source/feature_importance.json', 'w') as file:
+        json.dump(weights, file)
+
     return weights

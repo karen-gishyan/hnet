@@ -1,0 +1,76 @@
+# Start_node, end_node(end_node is when the patient is discharged)
+
+#generate costs from start, end nodes to drug nodes.
+for diagnosis in unique_diagnosis:
+    diagnosis_df=main_df[main_df.diagnosis==diagnosis]
+    # find unique patients in the diagnosis
+
+
+class Graph:
+    def__init__self(diagnosis_df):
+        self.df=diagnosis_df
+        self.unique_patients=diagnosis_df.hadm_id.unique()
+        self.diagnosis_name=self.df.diagnosis[0]
+
+    # this is repeated for each diagnosis, results are stored in json files, if 70 diagnosis, then 140 json files.
+    # nodes are heterogenous, for that reasons custom cost logic is separated into two functions.
+    def start_end_to_drug_cost(self)
+        """
+        Rationale, see how often a given drug is given on the first day of admittance, and on the last day of
+        discharge, this become the respective cost between start_node_to_drug and drug_to_end_node.
+        """
+        drug_weight_start=defaultdict()
+        drug_weight_end=defaultdict()
+        for patient in unique_patients:
+            patient_df=diagnosis_df[diagnosis_df.hadm_id==patient]
+            admittime=patient_df.admittime[0]
+            dischtime=patient_df.dischtime[0]
+            for i, row in patient_df.iterrows():
+                # even if does not exist, create and add one
+                #TODO adjust the cost before updating
+                if row.drug.startdate.day==admittime.day:
+                    drug_weight_start[('start_node',row.drug]+=1
+                if row.drug.enddate.day==dischtime.day:
+                    drug_weight_end['end_node',row.drug]+=1
+
+        with open(f"jsons/{self.diagnosis_name}_drug_weight_start.json","w") as file:
+            json.dump(file,drug_weight_start)
+
+        with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json","w") as file:
+            json.dump(file,drug_weight_end)
+
+    def between_node_cost():
+        with open(f"jsons/{self.diagnosis_name}_drugs.json","w") as file:
+            json.dump(file,total_overlap)
+
+    def construct_graph(self):
+        passg
+
+    def heuristic(self):
+        model_weights=svc(model_preprocess()) # svc should be renamed to model_weights, allowing for different models.
+                with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json","w") as file:
+            json.dump(file,drug_weight_end)
+
+    def return_heuristic(node_i,node_j):
+
+        with open(f"jsons/{self.diagnosis_name}_drug_weight_start.json","r") as file:
+            file1=json.load(file)
+
+        with open(f"jsons/{self.diagnosis_name}_drugs.json","w") as file:
+            file2=json.dump(file)
+
+        with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json","w") as file:
+            file3=json.dump(file)
+
+        # is in either dict, cannot be in all.
+        if (node_i,node_j) or (node_j,node_i) in file1.keys():
+            return file1.keys['(node_i,node_j)'] or file1.keys['(node_i,node_j)']
+
+        if (node_i,node_j) or (node_j,node_i) in file2.keys():
+            return file2.keys['(node_i,node_j)'] or file2.keys['(node_i,node_j)']
+
+        if (node_i,node_j) or (node_j,node_i) in file3.keys():
+            return file3.keys['(node_i,node_j)'] or file3.keys['(node_i,node_j)']
+
+    def nx_a_star(self):
+        print(nx.astar_path(self.graph, 'start_node', 'end_node', heuristic=return_heuristic, weight='cost')

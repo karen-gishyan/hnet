@@ -1,11 +1,15 @@
+import json
+import os
 import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetimerange import DateTimeRange
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import List, Tuple, Dict
-from queue import PriorityQueue, Queue
+from typing import List, Tuple, Dict, Optional
+from networkx.algorithms.traversal import dfs_tree, dfs_successors, edge_dfs, dfs_edges
+from networkx import astar_path
+from source.utils import svc, model_preprocess
 
 
 # TODO: working A_star,limiting edges between nodes, and limit search space based on some diagnosis grouping.
@@ -27,15 +31,15 @@ class BaseGraph(ABC):
         super().__init__()
 
     @abstractmethod
-    def start_node_to_node_i_heuristic(self):
+    def start_node_to_node_i_cost(self):
         pass
 
     @abstractmethod
-    def node_i_to_end_node_heuristic(self):
+    def node_i_to_end_node_cost(self):
         pass
 
     @abstractmethod
-    def between_node_heuristic(self):
+    def between_node_cost(self):
         pass
 
     def A_Star(self, start_node, end_node):
@@ -121,68 +125,74 @@ class Graph(BaseGraph):
     """
     Construct a network, define edges.
     """
+    if not os.path.isdir('./jsons'): os.mkdir('jsons')
 
-    def __init__(self, drugs_df: pd.DataFrame = None):
+    def __init__(self, diagnosis_df: pd.DataFrame = None):
         self.graph = nx.Graph()
-        self.drugs_df = drugs_df
-        self.start_node = 'Emergency'
-        self.end_node = 'Successful Discharge'
-        # TODO: admittime dischtime probably need to be removed
-        self.admittime = self.drugs_df.admittime[0]
-        self.dischtime = self.drugs_df.dischtime[0]
+        self.df = diagnosis_df
+        self.unique_patients = diagnosis_df.hadm_id.unique()
+        self.diagnosis_name = self.df.diagnosis[0]
+        super(Graph, self).__init__()
 
-    def start_node_to_node_i_heuristic(self):
+    def start_end_to_drug_cost(self):
+        """
+        Rationale, see how often a given drug is given on the first day of admittance, and on the last day of
+        discharge, this become the respective cost between start_node_to_drug and drug_to_end_node.
+        """
+        drug_weight_start = defaultdict(int)
+        drug_weight_end = defaultdict(int)
+        for patient in self.unique_patients:
+            patient_df = self.df[self.df.hadm_id == patient]
+            admittime = patient_df.admittime[0]
+            dischtime = patient_df.dischtime[0]
+            for i, row in patient_df.iterrows():
+                # even if does not exist, create and add one
+                # TODO adjust the cost before updating
+                if row.drug.startdate.day == admittime.day:
+                    drug_weight_start[('start_node', row.drug)] += 1
+                if row.drug.enddate.day == dischtime.day:
+                    drug_weight_end['end_node', row.drug] += 1
+
+        with open(f"jsons/{self.diagnosis_name}_drug_weight_start.json", "w") as file:
+            json.dump(drug_weight_start, file)
+
+        with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json", "w") as file:
+            json.dump(drug_weight_end, file)
+
+    def start_node_to_node_i_cost(self):
         pass
 
-    def node_i_to_end_node_heuristic(self, weight_dict):
-        self.end_node = "Successful Discharge"
-        node_edge_list = []
-        for key in weight_dict['ELECTIVE'].keys():
-            # lower the weight, higher the cost
-            # TODO: weight logic may need to change depending on the model
-            node_edge_list.append((self.end_node, key, {'cost': 1 - weight_dict['ELECTIVE'][key]}))
-        return node_edge_list
+    def node_i_to_end_node_cost(self):
+        pass
 
-    def between_node_heuristic(self) -> List[Tuple[str, str, Dict]]:
+    def between_node_cost(self):
         """
          Construct edges between drug nodes based on the fact if two drugs are used in combination.
          Combination means drugs are applied in the same timeframe.
          """
-        total_overlap_list = []
         total_overlap = defaultdict(int)  # default is 0
-        unique_admissions = self.drugs_df.hadm_id.unique()
-        # TODO which of these in the end generate the route to the end_node
-        # TODO direct node cannot exist between each node and end node
-
+        unique_admissions = self.df.hadm_id.unique()
         for admission_i, id in enumerate(unique_admissions):
-            patient_drugs = self.drugs_df[self.drugs_df.hadm_id == id]
+            patient_drugs = self.df[self.df.hadm_id == id]
             for i, row_i in patient_drugs.iterrows():
                 for j, row_j in patient_drugs.iterrows():
                     if i == j:
                         continue
                     total_intersection_days = self.calculate_date_intersection(row_i, row_j)
                     if total_intersection_days:
-                        patient_stay_length_days = (self.dischtime - self.admittime).days + 1
-                        # cost = round(patient_stay_length_days / total_intersection_days, 2)
-                        cost = round(total_intersection_days, 2)
+                        # TODO dischtime, admittime needs to be checked.
+                        patient_stay_length_days = (row_i.dischtime - row_i.admittime).days + 1
+                        cost = round(patient_stay_length_days / total_intersection_days, 2)
                         # no need to store (i,j) if (j,i) already in keys
                         if not (row_j.drug, row_i.drug) in total_overlap.keys():
                             total_overlap[(row_i.drug, row_j.drug)] += total_overlap[(
                                 row_i.drug, row_j.drug)] + cost
-
             print(f" Iteration {admission_i} / {len(unique_admissions)} done")
-        for tuple_ in total_overlap:
-            total_overlap_list.append((*tuple_, {'cost': total_overlap[tuple_]}))
 
-        # TODO number of node-edges for first diagnosis (16373)
-        # TODO inspect the very big cost numbers
-        # TODO save results to json
-        # return total_overlap_list
-        self.graph.add_edges_from(total_overlap_list)
-        edges_with_costs = self.graph.edges(data=True)
-        return self
+        with open(f"jsons/{self.diagnosis_name}_drugs.json", "w") as file:
+            json.dump(total_overlap, file)
 
-    def calculate_date_intersection(self, node_i, node_j) -> int:
+    def calculate_date_intersection(self, node_i, node_j) -> Optional[int]:
         """
         Calculate the date of overlap between the serving of two drug nodes.
         The result is used for calculating the cost between two drugs.
@@ -200,10 +210,74 @@ class Graph(BaseGraph):
                                             intersection_date_range.start_datetime).days, 1)
             return intersections_total_days
 
+    def heuristic(self):
+        model_weights = svc(
+            model_preprocess())  # svc should be renamed to model_weights, allowing for different models.
+        with open(f"jsons/{self.diagnosis_name}_drug_heuristics.json", "w") as file:
+            json.dump(model_weights, file)
+
+    def return_heuristic(self, node_i, node_j):
+
+        start_to_drugs, between_drugs, drugs_to_end = self.load_files()
+        # is in either dict, cannot be in all.
+        if (node_i, node_j) or (node_j, node_i) in start_to_drugs.keys():
+            return start_to_drugs.keys['(node_i,node_j)'] or start_to_drugs.keys['(node_i,node_j)']
+
+        if (node_i, node_j) or (node_j, node_i) in between_drugs.keys():
+            return between_drugs.keys['(node_i,node_j)'] or between_drugs.keys['(node_i,node_j)']
+
+        if (node_i, node_j) or (node_j, node_i) in drugs_to_end.keys():
+            return drugs_to_end.keys['(node_i,node_j)'] or drugs_to_end.keys['(node_i,node_j)']
+
+    def load_files(self):
+
+        with open(f"jsons/{self.diagnosis_name}_drug_weight_start.json", "r") as file:
+            start_to_drugs = json.load(file)
+
+        with open(f"jsons/{self.diagnosis_name}_drugs.json", "w") as file:
+            between_drugs = json.dump(file)
+
+        with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json", "w") as file:
+            drugs_to_end = json.dump(file)
+
+        return start_to_drugs, between_drugs, drugs_to_end
+
+    def construct_graph(self):
+        """
+        Convert dicts of nodes and edges to nx.add_edges_from() format, then construct the graph.
+        """
+        start_to_drugs, between_drugs, drugs_to_end = self.load_files()
+
+        start_to_drug_edges, between_drugs_edges, drugs_to_end_edges = [], [], []
+        for tuple_ in start_to_drugs:
+            start_to_drug_edges.append((*tuple_, {'cost': start_to_drugs[tuple_]}))
+        for tuple_ in start_to_drugs:
+            between_drugs_edges.append((*tuple_, {'cost': between_drugs[tuple_]}))
+        for tuple_ in start_to_drugs:
+            drugs_to_end_edges.append((*tuple_, {'cost': drugs_to_end[tuple_]}))
+
+        # add the list elements together and construct the final graph.
+        start_to_drug_edges.extend(between_drugs_edges)
+        start_to_drug_edges.extend(drugs_to_end_edges)
+        self.graph.add_edges_from(start_to_drug_edges)
+
+    def nx_a_star(self):
+        print(nx.astar_path(self.graph, 'start_node', 'end_node', heuristic=self.return_heuristic, weight='cost'))
+
+    def bfs(self):
+        edges = self.graph.edges(data=True)
+
+        res1 = sorted(list(dfs_tree(self.graph, source='NS', depth_limit=50).edges()))
+        res2 = dfs_successors(self.graph)
+        # res = sorted(list(dfs_tree(self.graph, source='NS')))
+        res3 = list(edge_dfs(self.graph, source='NS'))
+        res4 = list(dfs_edges(self.graph, source='NS'))
+        return self
+
     def visualize(self):
         position = nx.spring_layout(self.graph)
         nx.draw(self.graph, position, with_labels=True)
-        labels = nx.get_edge_attributes(self.graph, 'cost')
-        labels = {edge: self.graph.edges[edge]['cost'] for edge in self.graph.edges}
-        nx.draw_networkx_edge_labels(self.graph, position, edge_labels=labels)
+        # labels = nx.get_edge_attributes(self.graph, 'cost')
+        # labels = {edge: self.graph.edges[edge]['cost'] for edge in self.graph.edges}
+        # nx.draw_networkx_edge_labels(self.graph, position, edge_labels=labels)
         plt.show()

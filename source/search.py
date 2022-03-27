@@ -124,13 +124,16 @@ class BaseGraph(ABC):
 class Graph(BaseGraph):
     """
     Construct a network, define edges.
+    Tests:
+    1_admission: ✓
     """
-    if not os.path.isdir('./jsons'): os.mkdir('jsons')
+
+    if not os.path.isdir('jsons'): os.mkdir('jsons')
 
     def __init__(self, diagnosis_df: pd.DataFrame = None):
         self.graph = nx.Graph()
         self.df = diagnosis_df
-        self.unique_patients = diagnosis_df.hadm_id.unique()
+        self.unique_admissions = diagnosis_df.hadm_id.unique()
         self.diagnosis_name = self.df.diagnosis[0]
         super(Graph, self).__init__()
 
@@ -141,22 +144,23 @@ class Graph(BaseGraph):
         """
         drug_weight_start = defaultdict(int)
         drug_weight_end = defaultdict(int)
-        for patient in self.unique_patients:
-            patient_df = self.df[self.df.hadm_id == patient]
+        for admission in self.unique_admissions:
+            patient_df = self.df[self.df.hadm_id == admission]
             admittime = patient_df.admittime[0]
             dischtime = patient_df.dischtime[0]
             for i, row in patient_df.iterrows():
                 # even if does not exist, create and add one
                 # TODO adjust the cost before updating
-                if row.drug.startdate.day == admittime.day:
-                    drug_weight_start[('start_node', row.drug)] += 1
-                if row.drug.enddate.day == dischtime.day:
-                    drug_weight_end['end_node', row.drug] += 1
+                if row.startdate.date() == admittime.date():
+                    # key has to be str for json encoding
+                    drug_weight_start['{}'.format(('start_node', row.drug))] += 1
+                if row.enddate.date() == dischtime.date():
+                    drug_weight_end['{}'.format(('end_node', row.drug))] += 1
 
-        with open(f"jsons/{self.diagnosis_name}_drug_weight_start.json", "w") as file:
+        with open(f"jsons/'{self.diagnosis_name}'_drug_weight_start.json", "w") as file:
             json.dump(drug_weight_start, file)
 
-        with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json", "w") as file:
+        with open(f"jsons/'{self.diagnosis_name}'_drug_weight_end.json", "w") as file:
             json.dump(drug_weight_end, file)
 
     def start_node_to_node_i_cost(self):
@@ -169,25 +173,28 @@ class Graph(BaseGraph):
         """
          Construct edges between drug nodes based on the fact if two drugs are used in combination.
          Combination means drugs are applied in the same timeframe.
+         Tests:
+         1_admission: ✓
          """
         total_overlap = defaultdict(int)  # default is 0
-        unique_admissions = self.df.hadm_id.unique()
-        for admission_i, id in enumerate(unique_admissions):
-            patient_drugs = self.df[self.df.hadm_id == id]
-            for i, row_i in patient_drugs.iterrows():
-                for j, row_j in patient_drugs.iterrows():
+        for adm_i, admission in enumerate(self.unique_admissions):
+            patient_df = self.df[self.df.hadm_id == admission]
+            drug_cost_dict = {}
+            for i, row_i in patient_df.iterrows():
+                for j, row_j in patient_df.iterrows():
                     if i == j:
                         continue
                     total_intersection_days = self.calculate_date_intersection(row_i, row_j)
                     if total_intersection_days:
                         # TODO dischtime, admittime needs to be checked.
-                        patient_stay_length_days = (row_i.dischtime - row_i.admittime).days + 1
-                        cost = round(patient_stay_length_days / total_intersection_days, 2)
+                        cost = patient_stay_length_days = (row_i.dischtime - row_i.admittime).days + 1
+                        # cost = round(patient_stay_length_days / total_intersection_days, 2)
                         # no need to store (i,j) if (j,i) already in keys
-                        if not (row_j.drug, row_i.drug) in total_overlap.keys():
-                            total_overlap[(row_i.drug, row_j.drug)] += total_overlap[(
-                                row_i.drug, row_j.drug)] + cost
-            print(f" Iteration {admission_i} / {len(unique_admissions)} done")
+                        if not '{}'.format((row_j.drug, row_i.drug)) in total_overlap.keys():
+                            total_overlap['{}'.format((row_i.drug, row_j.drug))] += cost
+            break
+
+            print(f" Iteration {adm_i} / {len(self.unique_admissions)} done")
 
         with open(f"jsons/{self.diagnosis_name}_drugs.json", "w") as file:
             json.dump(total_overlap, file)
@@ -210,41 +217,34 @@ class Graph(BaseGraph):
                                             intersection_date_range.start_datetime).days, 1)
             return intersections_total_days
 
-    def heuristic(self):
+    def calculate_heuristic(self):
         model_weights = svc(
             model_preprocess())  # svc should be renamed to model_weights, allowing for different models.
         with open(f"jsons/{self.diagnosis_name}_drug_heuristics.json", "w") as file:
             json.dump(model_weights, file)
 
     def return_heuristic(self, node_i, node_j):
-
-        start_to_drugs, between_drugs, drugs_to_end = self.load_files()
-        # is in either dict, cannot be in all.
-        if (node_i, node_j) or (node_j, node_i) in start_to_drugs.keys():
-            return start_to_drugs.keys['(node_i,node_j)'] or start_to_drugs.keys['(node_i,node_j)']
-
-        if (node_i, node_j) or (node_j, node_i) in between_drugs.keys():
-            return between_drugs.keys['(node_i,node_j)'] or between_drugs.keys['(node_i,node_j)']
-
-        if (node_i, node_j) or (node_j, node_i) in drugs_to_end.keys():
-            return drugs_to_end.keys['(node_i,node_j)'] or drugs_to_end.keys['(node_i,node_j)']
+        """
+        Return heuristic for the given node to end_node.
+        """
+        with open(f"jsons/{self.diagnosis_name}_drug_heuristics.json", "r") as file:
+            heuristics = json.load(file)
+        return heuristics.keys['(node_i,node_j)']
 
     def load_files(self):
 
         with open(f"jsons/{self.diagnosis_name}_drug_weight_start.json", "r") as file:
             start_to_drugs = json.load(file)
-
-        with open(f"jsons/{self.diagnosis_name}_drugs.json", "w") as file:
+        with open(f"jsons/{self.diagnosis_name}_drugs.json", "r") as file:
             between_drugs = json.dump(file)
-
-        with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json", "w") as file:
+        with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json", "r") as file:
             drugs_to_end = json.dump(file)
 
         return start_to_drugs, between_drugs, drugs_to_end
 
     def construct_graph(self):
         """
-        Convert dicts of nodes and edges to nx.add_edges_from() format, then construct the graph.
+        Convert dicts ojff nodes and edges to nx.add_edges_from() format, then construct the graph.
         """
         start_to_drugs, between_drugs, drugs_to_end = self.load_files()
 

@@ -43,34 +43,56 @@ class Graph:
         with open(f"jsons/{self.diagnosis_name}_drugs.json","w") as file:
             json.dump(file,total_overlap)
 
-    def construct_graph(self):
-        passg
-
     def heuristic(self):
         model_weights=svc(model_preprocess()) # svc should be renamed to model_weights, allowing for different models.
                 with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json","w") as file:
             json.dump(file,drug_weight_end)
 
     def return_heuristic(node_i,node_j):
+       start_to_drugs, between_drugs, drugs_to_end = self.load_files()
+        # is in either dict, cannot be in all.
+        if (node_i,node_j) or (node_j,node_i) in start_to_drugs.keys():
+            return start_to_drugs.keys['(node_i,node_j)'] or start_to_drugs.keys['(node_i,node_j)']
+
+        if (node_i,node_j) or (node_j,node_i) in between_drugs.keys():
+            return between_drugs.keys['(node_i,node_j)'] or between_drugs.keys['(node_i,node_j)']
+
+        if (node_i,node_j) or (node_j,node_i) in drugs_to_end.keys():
+            return drugs_to_end.keys['(node_i,node_j)'] or drugs_to_end.keys['(node_i,node_j)']
+
+    def load_files(self):
 
         with open(f"jsons/{self.diagnosis_name}_drug_weight_start.json","r") as file:
-            file1=json.load(file)
+            start_to_drugs=json.load(file)
 
         with open(f"jsons/{self.diagnosis_name}_drugs.json","w") as file:
-            file2=json.dump(file)
+            between_drugs=json.dump(file)
 
         with open(f"jsons/{self.diagnosis_name}_drug_weight_end.json","w") as file:
-            file3=json.dump(file)
+            drugs_to_end=json.dump(file)
 
-        # is in either dict, cannot be in all.
-        if (node_i,node_j) or (node_j,node_i) in file1.keys():
-            return file1.keys['(node_i,node_j)'] or file1.keys['(node_i,node_j)']
+        return start_to_drugs, between_drugs, drugs_to_end
 
-        if (node_i,node_j) or (node_j,node_i) in file2.keys():
-            return file2.keys['(node_i,node_j)'] or file2.keys['(node_i,node_j)']
+    def construct_graph(self):
+        """
+        Convert dicts of nodes and edges to nx.add_edges_from() format, then construct the graph.
+        """
+        start_to_drugs, between_drugs, drugs_to_end = self.load_files()
 
-        if (node_i,node_j) or (node_j,node_i) in file3.keys():
-            return file3.keys['(node_i,node_j)'] or file3.keys['(node_i,node_j)']
+        start_to_drug_edges,between_drugs_edges,drugs_to_end_edges=[],[],[]
+        for tuple_ in start_to_drugs:
+            start_to_drug_edges.append((*tuple_, {'cost': start_to_drugs[tuple_]})
+        for tuple_ in start_to_drugs:
+            between_drugs_edges.append((*tuple_, {'cost': between_drugs[tuple_]})
+        for tuple_ in start_to_drugs:
+            drugs_to_end_edges.append((*tuple_, {'cost': drugs_to_end[tuple_]})
+
+        # add the list elements together and construct the final graph.
+        start_to_drug_edges.extend(between_drugs_edges)
+        start_to_drug_edges.extend(drugs_to_end_edges)
+        self.graph.add_edges_from(start_to_drug_edges)
 
     def nx_a_star(self):
         print(nx.astar_path(self.graph, 'start_node', 'end_node', heuristic=return_heuristic, weight='cost')
+
+

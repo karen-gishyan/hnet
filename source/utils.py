@@ -1,9 +1,29 @@
+from datetimerange import DateTimeRange
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import LinearRegression
 import pandas as pd
 import numpy as np
-from typing import Dict
+from typing import Dict, Optional
 import json
+
+
+def calculate_date_intersection(node_i, node_j) -> Optional[int]:
+    """
+    Calculate the date of overlap between the serving of two drug nodes.
+    The result is used for calculating the cost between two drugs.
+    """
+    format = '%m/%d/%Y %H:%M'
+    # TODO format hour-minute is not correctly encoded, currently we do +1 on the total length.
+    # checks for erroneous data startdate is bigger than enddate
+    if node_i.startdate > node_i.enddate or node_j.startdate > node_j.enddate:
+        return
+    drug_i_range = DateTimeRange(node_i.startdate, node_i.enddate)
+    drug_j_range = DateTimeRange(node_j.startdate, node_j.enddate)
+    if drug_i_range.is_intersection(drug_j_range):
+        intersection_date_range = drug_i_range.intersection(drug_j_range)
+        intersections_total_days = max((intersection_date_range.end_datetime -
+                                        intersection_date_range.start_datetime).days, 1)
+        return intersections_total_days
 
 
 def diagnosis_value_counts(value_count=100) -> pd.Series:
@@ -96,8 +116,4 @@ def svc(df) -> Dict:
         model.fit(X, y)
         feature_to_weight = dict(zip(X.columns, model.coef_))
         weights.update({type: feature_to_weight})
-
-    with open('source/feature_importance.json', 'w') as file:
-        json.dump(weights, file)
-
     return weights

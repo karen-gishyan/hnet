@@ -1,8 +1,8 @@
+import json
 import os
 import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
-from networkx.algorithms.traversal import dfs_tree, dfs_successors, edge_dfs, dfs_edges
 from source.utils import calculate_date_intersection
 
 
@@ -24,14 +24,14 @@ class Graph():
          """
         for adm_i, admission in enumerate(self.unique_admissions):
             patient_df = self.df[self.df.hadm_id == admission]
+            patient_df_heuristics = {}
             for i, row_i in patient_df.iterrows():
-                if i == self.df_length - 2: # check this part to again
+                if i == self.df_length - 2:  # check this part to again
                     break
                 child_row_1, child_row_2 = patient_df.iloc[i + 1], patient_df.iloc[i + 2]
                 child_node_1_days_intersection = calculate_date_intersection(row_i, child_row_1)
                 child_node_2_days_intersection = calculate_date_intersection(row_i, child_row_2)
                 patient_stay_length = (row_i.dischtime - row_i.admittime).days + 1
-                # +1 and +2 for the drug sequence, closer to i, lesser the cost.
                 if child_node_1_days_intersection:
                     child_node_1_cost = 1 - round(patient_stay_length / child_node_1_days_intersection)
                 else:
@@ -42,22 +42,32 @@ class Graph():
                     child_node_2_cost = 2
                 self.graph.add_edge(row_i.drug, child_row_1.drug, cost=child_node_1_cost)
                 self.graph.add_edge(row_i.drug, child_row_2.drug, cost=child_node_2_cost)
+
+                # parent_h1 = self.consistent_heuristic(row_i.drug, child_row_1.drug, child_node_1_cost)
+                # parent_h2 = self.consistent_heuristic(row_i.drug, child_row_2.drug, child_node_2_cost)
+                # parent_h = min(parent_h1, parent_h2)
+                # patient_df_heuristics.update({row_i: parent_h})
+
+            # def heuristics_for_a_star(_, b):
+            #     return patient_df_heuristics[b]
+            #
+            graph_edges = list(self.graph.edges)
+            start_node, end_node = graph_edges[0][0], graph_edges[-1][1]
+            print(start_node, end_node)
+            # print(nx.astar_path(self.graph, source=start_node, target=end_node,
+            #                     heuristic=heuristics_for_a_star, weight='cost'))
             break
         print(nx.is_tree(self.graph))
         return self
 
-    def nx_a_star(self):
-        print(nx.astar_path(self.graph, 'start_node', 'end_node', heuristic=self.return_heuristic, weight='cost'))
+    def consistent_heuristic(self, parent_node, child_node, parent_to_child_cost):
 
-    def bfs(self):
-        edges = self.graph.edges(data=True)
-
-        res1 = sorted(list(dfs_tree(self.graph, source='NS', depth_limit=50).edges()))
-        res2 = dfs_successors(self.graph)
-        # res = sorted(list(dfs_tree(self.graph, source='NS')))
-        res3 = list(edge_dfs(self.graph, source='NS'))
-        res4 = list(dfs_edges(self.graph, source='NS'))
-        return self
+        with open('jsons/heuristics.json', 'r') as file:
+            heuristics_dict = json.load(file)
+        heuristics_parent = heuristics_dict.get(parent_node)
+        heuristics_child = heuristics_dict.get(child_node)
+        heuristics_parent = min(heuristics_parent, parent_to_child_cost + heuristics_child)
+        return heuristics_parent
 
     def visualize(self):
         position = nx.spring_layout(self.graph)

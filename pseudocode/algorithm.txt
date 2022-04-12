@@ -95,4 +95,34 @@ class Graph:
     def nx_a_star(self):
         print(nx.astar_path(self.graph, 'start_node', 'end_node', heuristic=return_heuristic, weight='cost')
 
+graph_construction(list_of_paths).
+1. If paths are not stored as sequences, store as sequences. ('A','B'), ('B','C')
+2. Obtain unique nodes from the sequence, this can be done before step 1 if (A,B,C) are available as separate nodes.
+3. Construct an adjanency matrix from nodes, each intersection shows how often a given pair appears along paths,
+   basically this is the weight. (start nodes also are part of the matrix)
+   For start nodes, also store them as a dict of tuple. {('A','B):2,('A','C'):1,('B','F':1)}
+4. return adjacency_matrix, start_nodes_dict,average_path_length
+
+
+graph_search(adjacency_matrix,start_nodes_dict,average_path_length)
+1. Select the most appearing sequence from start nodes dict. ('A','B') is the first route.
+2. Select the ending node from step1, which is 'B', add it to que (path_list=[])
+3. search_logic():
+   # termination condition
+   If path_list>=average_path_length, return path_list
+   Get the last element from path_list, store is as node.
+   Check the adjacency matrix the row corresponding to node, find the node with the most weight.
+   If there is only 1 node, select that node as the next node. (add to a list. que)
+   # Here we may need to check for a self loop.
+   # one step look ahead stage.
+   Else, select all nodes with equal weights, lets say C and F
+   temp={}
+   For each selected node:
+        find the node with the most cost (np.argmax).
+        store in temp, as (C,E):2
+   from temp, eg {(C,E):2,(F,G):1} select the key with the highest weight, if equal, select the first.
+   add C,E to path_list
+4. call_search logic()
+
+
 

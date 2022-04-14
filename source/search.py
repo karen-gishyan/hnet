@@ -4,6 +4,8 @@ import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
 from source.utils import calculate_date_intersection
+from collections import Counter
+from itertools import chain
 
 
 class Graph():
@@ -76,3 +78,71 @@ class Graph():
         # labels = {edge: self.graph.edges[edge]['cost'] for edge in self.graph.edges}
         # nx.draw_networkx_edge_labels(self.graph, position, edge_labels=labels)
         plt.show()
+
+
+def store_graph(*args):
+    """
+    each arg is a list of tuples, where each tuple represents an edge between nodes.
+    """
+    # store starting edges from each path
+    start_edges = sorted([tuple_ for path in args for (i, tuple_) in enumerate(path) if i == 0])
+    # unpack the paths and chain them into a sorted list.
+    path_combine = sorted(list(chain(*args)))
+    # count the frequency of edges among start edges and total path edges
+    start_edges_counter = Counter(start_edges)
+    path_combine_counter = Counter(path_combine)
+    # obtain distinc nodes from list of edge tuples
+    node_list = sorted(set(list(chain.from_iterable(path_combine))))
+
+    adjacency_df = pd.DataFrame(index=node_list, columns=node_list)
+    adjacency_df.fillna(0, inplace=True)
+    for key, value in path_combine_counter.items():
+        adjacency_df.at[key[0], key[1]] = value
+    return start_edges_counter, adjacency_df
+
+
+def find_path(que, adjacency_matrix, average_path_length, path_list):
+    """
+    Search the graph for an optimal path by applying a recursive one step look ahead logic on the
+    adjacency matrix generated from store graph.
+    :return: path_list
+    """
+    # breakpoint condition
+    # TODO the breakpoint logic may need to be more complex
+    if len(path_list) >= average_path_length:
+        print('The path is', path_list)
+        que.clear()
+        return path_list
+    else:
+        node = que.pop()
+        row = adjacency_matrix.loc[node]
+        row_max = max(row)
+        bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
+        successor_list = bool_row.index[bool_row].tolist()
+        print('successor_list', successor_list)
+        # breakpoint condition, return if no successor
+        # TODO the breakpoint logic may need to be more complex
+        if not successor_list:
+            print('The path is', path_list)
+            que.clear()
+            return path_list
+        if len(successor_list) == 1:
+            que.append(successor_list[0])
+            path_list.append(successor_list[0])
+        else:
+            # perform a one step look ahead
+            look_ahead_df = {}
+            for n in successor_list:
+                row = adjacency_matrix.loc[n]
+                row_max = max(row)
+                bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
+                n_successor_list = bool_row.index[bool_row].tolist()
+                print('n_successor_list', n_successor_list)
+                for s in n_successor_list:
+                    look_ahead_df.update({(n, s): row_max})
+            # select the first max appearing key
+            max_node = max(look_ahead_df, key=lambda _key: look_ahead_df[_key])
+            path_list.append(max_node[0])
+            que.append(max_node[1])
+            path_list.append(max_node[1])
+    find_path(que, adjacency_matrix, average_path_length, path_list)

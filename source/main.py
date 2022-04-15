@@ -1,6 +1,6 @@
 from collections import deque
 
-from source.utils import model_preprocess, svc, diagnosis_value_counts, merge_admissions_prescriptions
+from source.utils import make_train_data, svc, diagnosis_value_counts, merge_admissions_prescriptions
 from source.search import Graph, store_graph, find_path
 import pandas as pd
 

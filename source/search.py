@@ -86,6 +86,8 @@ def store_graph(*args):
     """
     # store starting edges from each path
     start_edges = sorted([tuple_ for path in args for (i, tuple_) in enumerate(path) if i == 0])
+    #TODO if single listed is passed, no need to combine.
+
     # unpack the paths and chain them into a sorted list.
     path_combine = sorted(list(chain(*args)))
     # count the frequency of edges among start edges and total path edges

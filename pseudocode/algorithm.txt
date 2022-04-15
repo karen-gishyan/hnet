@@ -125,4 +125,43 @@ graph_search(adjacency_matrix,start_nodes_dict,average_path_length)
 4. call_search logic()
 
 
+A star heuristics
+1. No need to iterate over all existing diagnosis from main. Select the most appearing diagnosis, or a diagnosis
+   which appears n(e.g.100) number of times. Merge with prescription (I think needed for only the admit, discharge times).
+   def sequential_paths(self)
+   # this paths also represent graph edges, we later use custom combination then searching logic for them
+Part1
+2. For this dataset. First store each patients path. This would simply mean connecting each drug to its next drug.
+   there is no cost here. If ('A','B') edge exists ('B','A') if exists is also stored.
+   # Question, if graph is undirected, are both ('A','B') and ('B','A') listed.
+   [('Syringe','Phenylephrine HCl'),('Phenylephrine HCl','Nitroglycerin'),('Nitroglycerin','LR'),('LR','Syringe')]
+   For each path store the starting tuples in a separate list as starting tuples.
+   Chain these paths into a single list(individual paths are also accepted) and along with starting tuples pass to
+   store_graph().
+Part2
+3. def make_training_data()
+   identify the good/bad outcomes for this dataset, where columns are all drugs, rows are unique admissions
+   (or patients), does not matter much.
+   def get_model_weight()
+   train a model on the training data, obtain weights( weight of each drug), store as json.
+4. Here you have constructed a graph logic where each drug is connected to its next two drug (has two subnodes).
+   Unlike part1, we also define costs between nodes. Store costs in an adjacency matrix.
+   The heuristics logic is defined. use nx_a_star() to search for the best path for a single patient.
+   using the graph and heuristics for a single patient. Store each path if you want to furhterh optimize.
+   Although this A star search and my custom search are on the same level, I believe path merging can also be used
+   to further search for the best path using existing A star paths. It can also be used on the graph from step 4
+   without heuristics, but it will not be needed.
+5. If you have time, you may also connect all patients drugs to each other for a single diagnosis, but I do not know
+   how heuristics may look for such graph. (DFS, BFS could be used but I think is not worth it)
+
+Final contribution should look like this.
+1. Graph logic based on date intersection between drugs, consistent heuristics logic based on ml model outcomes.
+   Single patient level. If done for multiple patients, they can be combined using path merge.
+2. Path merging algorithm, which operates on sequences for optimizing drug sequences.
+
+Things to optimize:
+1. Cost function, and consisten heurstic functions can be changed.
+2. Path mergin algorithm can also be optimized.
+
+
 

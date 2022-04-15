@@ -33,6 +33,7 @@ def diagnosis_value_counts(value_count=100) -> pd.Series:
     :return:
     """
     df = pd.read_csv('data/ADMISSIONS.csv')
+    # shows how often each diagnosis appears.
     unique_values = df.DIAGNOSIS.value_counts()
     # TODO >= is correct, others are for experimentation
     unique_values = unique_values[unique_values <= value_count]  # at least 100 cases for each diagnosis type
@@ -54,12 +55,7 @@ def merge_admissions_prescriptions(diagnosis_value_counts: pd.Series) -> pd.Data
         df[column] = pd.to_datetime(df[column])
     return df
 
-
-def tree_preprocess() -> pd.DataFrame:
-    pass
-
-
-def model_preprocess() -> pd.DataFrame:
+def make_train_data() -> pd.DataFrame:
     """
     Constructs a dataframe where the drugs are the features X and the final patient discharge is the
     outcome y. Each row represents a unique hospital admittance. From the total list of drugs,

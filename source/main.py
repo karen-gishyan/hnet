@@ -1,8 +1,6 @@
 from collections import deque
-
-from source.utils import make_train_data, svc, diagnosis_value_counts, merge_admissions_prescriptions
+from source.utils import make_train_data, get_drug_weights, merge_dfs
 from source.search import Graph, store_graph, find_path
-import pandas as pd
 
 if __name__ == "__main__":
     #### path merging algorithm
@@ -20,12 +18,10 @@ if __name__ == "__main__":
     find_path(que, adjacency_matrix, average_path_length, path_list)
 
     #### A Star logic
-    df = merge_admissions_prescriptions(diagnosis_value_counts(value_count=2))
-    # df=pd.read_csv('data/val_2.csv')
-    unique_diagnosis = df.diagnosis.unique()
-    # construct a search tree for each unique_diagnosis
-    for diagnosis in unique_diagnosis:
-        diagnosis_df = df[df.diagnosis == diagnosis]
-        graph = Graph(diagnosis_df)
-        graph.search_space().visualize()
-        break
+    df = merge_dfs(drug_name='PNEUMONIA')
+    train_df = make_train_data(df)
+    drug_weights = get_drug_weights(train_df)
+
+    graph = Graph(df)
+    # TODO issue in search_space
+    # graph.search_space().visualize()

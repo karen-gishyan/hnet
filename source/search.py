@@ -6,62 +6,68 @@ import matplotlib.pyplot as plt
 from source.utils import calculate_date_intersection
 from collections import Counter
 from itertools import chain
+import math
 
 
 class Graph():
-    if not os.path.isdir('jsons'): os.mkdir('jsons')
-
     def __init__(self, diagnosis_df: pd.DataFrame = None):
         self.graph = nx.DiGraph()
         self.df = diagnosis_df
-        self.df_length = len(self.df)
         self.unique_admissions = list(diagnosis_df.hadm_id.unique())
-        self.diagnosis_name = self.df.diagnosis[0]
-        super(Graph, self).__init__()
 
     def search_space(self):
         """
          Construct edges between drug nodes based on the fact if two drugs are used in combination.
          Combination means drugs are applied in the same timeframe.
          """
+        path_list = []
         for adm_i, admission in enumerate(self.unique_admissions):
             patient_df = self.df[self.df.hadm_id == admission]
-            patient_df_heuristics = {}
+            patient_df.reset_index(inplace=True)
+            patient_df_edges = []
+            n_drugs = patient_df.shape[0]
+            discharge_location = list(patient_df.discharge_location)[0]
             for i, row_i in patient_df.iterrows():
-                if i == self.df_length - 2:  # check this part to again
+                if i == n_drugs - 3:  # check this part to again
                     break
                 child_row_1, child_row_2 = patient_df.iloc[i + 1], patient_df.iloc[i + 2]
                 child_node_1_days_intersection = calculate_date_intersection(row_i, child_row_1)
                 child_node_2_days_intersection = calculate_date_intersection(row_i, child_row_2)
                 patient_stay_length = (row_i.dischtime - row_i.admittime).days + 1
+                # the more the intersection days the lesser the cost
                 if child_node_1_days_intersection:
-                    child_node_1_cost = 1 - round(patient_stay_length / child_node_1_days_intersection)
+                    relative_cost = round(patient_stay_length / child_node_1_days_intersection)
                 else:
-                    child_node_1_cost = 1
+                    relative_cost = patient_stay_length
+                child1_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
+                patient_df_edges.append((row_i.drug, child_row_1.drug, child1_cost))
                 if child_node_2_days_intersection:
-                    child_node_2_cost = 2 - round(patient_stay_length / child_node_2_days_intersection)
+                    relative_cost = round(patient_stay_length / child_node_2_days_intersection) + 1
                 else:
-                    child_node_2_cost = 2
-                self.graph.add_edge(row_i.drug, child_row_1.drug, cost=child_node_1_cost)
-                self.graph.add_edge(row_i.drug, child_row_2.drug, cost=child_node_2_cost)
+                    # +1 cost for being not the directly connected node in the sequence
+                    relative_cost = patient_stay_length + 1
+                child2_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
+                patient_df_edges.append((row_i.drug, child_row_2.drug, child2_cost))
 
-                # parent_h1 = self.consistent_heuristic(row_i.drug, child_row_1.drug, child_node_1_cost)
-                # parent_h2 = self.consistent_heuristic(row_i.drug, child_row_2.drug, child_node_2_cost)
-                # parent_h = min(parent_h1, parent_h2)
-                # patient_df_heuristics.update({row_i: parent_h})
+            path_list.append(patient_df_edges)
+            print(f"Iter {adm_i} completed")
+        # print(nx.is_tree(self.graph))
+        return path_list
 
-            # def heuristics_for_a_star(_, b):
-            #     return patient_df_heuristics[b]
-            #
-            graph_edges = list(self.graph.edges)
-            start_node, end_node = graph_edges[0][0], graph_edges[-1][1]
-            print(start_node, end_node)
-            # print(nx.astar_path(self.graph, source=start_node, target=end_node,
-            #                     heuristic=heuristics_for_a_star, weight='cost'))
-            break
-        print(nx.is_tree(self.graph))
-        return self
 
+    def cost_function(self, days_intersection_cost: int, path_lengh: int, discharge_location: str):
+        """
+        Return the cost based on intersection days, discharge_outcome and path_length.
+        :param days_intersection:
+        :param discharge_location:
+        :param path_lengh:
+        :return:
+        """
+        if discharge_location == "DEAD/EXPIRED":
+            return days_intersection_cost + math.log2(path_lengh) + 1  # fixed penalty
+        return round(days_intersection_cost + math.log2(path_lengh))
+
+    #TODO should be removed
     def consistent_heuristic(self, parent_node, child_node, parent_to_child_cost):
 
         with open('jsons/heuristics.json', 'r') as file:
@@ -86,14 +92,14 @@ def store_graph(*args):
     """
     # store starting edges from each path
     start_edges = sorted([tuple_ for path in args for (i, tuple_) in enumerate(path) if i == 0])
-    #TODO if single listed is passed, no need to combine.
+    # TODO if single listed is passed, no need to combine.
 
     # unpack the paths and chain them into a sorted list.
     path_combine = sorted(list(chain(*args)))
     # count the frequency of edges among start edges and total path edges
     start_edges_counter = Counter(start_edges)
     path_combine_counter = Counter(path_combine)
-    # obtain distinc nodes from list of edge tuples
+    # obtain distinct nodes from list of edge tuples
     node_list = sorted(set(list(chain.from_iterable(path_combine))))
 
     adjacency_df = pd.DataFrame(index=node_list, columns=node_list)
@@ -117,6 +123,7 @@ def find_path(que, adjacency_matrix, average_path_length, path_list):
         return path_list
     else:
         node = que.pop()
+        # TODO should be chosen based on the min row not max
         row = adjacency_matrix.loc[node]
         row_max = max(row)
         bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)

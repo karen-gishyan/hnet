@@ -1,3 +1,9 @@
+import os
+import sys
+cwd=os.getcwd()
+if not cwd in sys.path:
+    sys.path.append('.')
+
 from collections import deque
 from source.utils import make_train_data, get_drug_weights, merge_dfs
 from source.search import Graph, store_graph, find_path
@@ -19,9 +25,6 @@ if __name__ == "__main__":
 
     #### A Star logic
     df = merge_dfs(drug_name='PNEUMONIA')
-    train_df = make_train_data(df)
-    drug_weights = get_drug_weights(train_df)
-
     graph = Graph(df)
-    # TODO issue in search_space
-    # graph.search_space().visualize()
+    paths=graph.search_space()
+

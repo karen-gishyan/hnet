@@ -153,7 +153,10 @@ def store_graph(list2d):
     return adjacency_df, edges_cost_sum, start_edges_frequency, start_edges_cost_sum
 
 
-def find_path(que, adjacency_matrix, average_path_length, path_list):
+# TODO issue for both find_path and find_sequence.
+# If a node is explored, it is not added to the que, and the function exists with smaller path
+# Should be made more complex
+def find_path(que, adjacency_matrix, average_path_length, path_list, explored):
     """
     Search the graph for an optimal path by applying a recursive one step look ahead logic on the
     adjacency matrix generated from store graph.
@@ -165,13 +168,14 @@ def find_path(que, adjacency_matrix, average_path_length, path_list):
         print('The path is', path_list)
         que.clear()
         return path_list
+    if not len(que):
+        print('The final path for sequence is', path_list)
+        return path_list
     else:
         node = que.pop()
-        # TODO should be chosen based on the min row not max
         row = adjacency_matrix.loc[node]
         row_max = max(row)
         bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
-        # if a nodes successor node is the same node,
         successor_list = bool_row.index[bool_row].tolist()
         print('successor_list', successor_list)
         # breakpoint condition, return if no successor
@@ -181,8 +185,10 @@ def find_path(que, adjacency_matrix, average_path_length, path_list):
             que.clear()
             return path_list
         if len(successor_list) == 1:
-            que.append(successor_list[0])
-            path_list.append(successor_list[0])
+            if successor_list[0] not in explored:
+                que.append(successor_list[0])
+                path_list.append(successor_list[0])
+                explored.append(successor_list[0])
         else:
             # perform a one step look ahead
             look_ahead_df = {}
@@ -200,4 +206,74 @@ def find_path(que, adjacency_matrix, average_path_length, path_list):
             path_list.append(max_node[0])
             que.append(max_node[1])
             path_list.append(max_node[1])
-    find_path(que, adjacency_matrix, average_path_length, path_list)
+            explored.append(max_node[1])
+    find_path(que, adjacency_matrix, average_path_length, path_list, explored)
+
+
+def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explored, edges_cost_sum):
+    """
+    Search the graph for an optimal path by applying a recursive one step look ahead logic on the
+    adjacency matrix generated from store graph.
+    :return: path_list
+    """
+    # breakpoint condition
+    # TODO the breakpoint logic may need to be more complex
+    if len(path_list) >= average_path_length:
+        print('The path is', path_list)
+        que.clear()
+        return path_list
+    if not len(que):
+        print('The final path for graph is', path_list)
+        return path_list
+    else:
+        node = que.pop()
+        row = adjacency_matrix.loc[node]
+        row_max = max(row)
+        bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
+        successor_list = bool_row.index[bool_row].tolist()
+        print('successor_list', successor_list)
+        # breakpoint condition, return if no successor
+        # TODO the breakpoint logic may need to be more complex
+        if not successor_list:
+            print('The path is', path_list)
+            que.clear()
+            return path_list
+        if len(successor_list) == 1:
+            if successor_list[0] not in explored:
+                que.append(successor_list[0])
+                path_list.append(successor_list[0])
+                explored.append(successor_list[0])
+            else:
+                # TODO logic may need to be more complex
+                return path_list
+        else:
+            # for graphs costs are also taken into account
+            assert edges_cost_sum, 'costs should be provided'
+            successor_costs = {(node, n): edges_cost_sum.get((node, n)) for n in successor_list}
+            successor_costs_list = [key for key in successor_costs.keys()
+                                    if successor_costs[key] == max(successor_costs.values())]
+            if len(successor_costs_list) == 1:
+                if successor_costs_list[0][1] not in explored:
+                    que.append(successor_costs_list[0][1])
+                    path_list.append(successor_costs_list[0][1])
+                    explored.append(successor_costs_list[0][1])
+            else:
+                # perform a one step look ahead
+                look_ahead_df = {}
+                for n in successor_list:
+                    row = adjacency_matrix.loc[n]
+                    row_max = max(row)
+                    bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
+                    n_successor_list = bool_row.index[bool_row].tolist()
+                    print('n_successor_list', n_successor_list)
+                    for s in n_successor_list:
+                        look_ahead_df.update({(n, s): row_max})
+                # select the first max appearing key
+                # TODO issue ('insulin -> ipratropium -> insulin) and repeating starts
+                max_node = max(look_ahead_df, key=lambda _key: look_ahead_df[_key])
+                path_list.append(max_node[0])
+                if max_node[1] not in explored:
+                    que.append(max_node[1])
+                    path_list.append(max_node[1])
+                    explored.append(max_node[1])
+    find_path_graph(que, adjacency_matrix, average_path_length, path_list, explored, edges_cost_sum)

@@ -18,44 +18,53 @@ class Graph():
          Construct edges between drug nodes based on the fact if two drugs are used in combination.
          Combination means drugs are applied in the same timeframe.
          """
-        path_list = []  # total list of edges from each admission
+        edge_list = []  # total list of edges from each admission
         sequence_list = []  # drugs as sequences, duplicates removed
         for adm_i, admission in enumerate(self.unique_admissions):
             patient_df = self.df[self.df.hadm_id == admission]
             patient_df.reset_index(inplace=True)
-            # TODO set is for removing self loops, which may result in information loss
-            sequence_list.append(list(set(patient_df.drug)))  # append unique drugs as a sequence list
+            patient_stay_length = (patient_df.dischtime[0] - patient_df.admittime[0]).days + 1
             patient_df_edges = {}
+            patient_df_sequence = []
             n_drugs = patient_df.shape[0]
             discharge_location = list(patient_df.discharge_location)[0]
             for i, row_i in patient_df.iterrows():
                 if i == n_drugs - 3:  # check this part to again
                     break
                 child_row_1, child_row_2 = patient_df.iloc[i + 1], patient_df.iloc[i + 2]
-                child_node_1_days_intersection = calculate_date_intersection(row_i, child_row_1)
-                child_node_2_days_intersection = calculate_date_intersection(row_i, child_row_2)
-                patient_stay_length = (row_i.dischtime - row_i.admittime).days + 1
-                # the more the intersection days the lesser the cost
-                if child_node_1_days_intersection:
-                    relative_cost = round(patient_stay_length / child_node_1_days_intersection)
-                else:
-                    relative_cost = patient_stay_length
-                child1_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
-                patient_df_edges.update({(row_i.drug, child_row_1.drug): child1_cost})
-                if child_node_2_days_intersection:
-                    relative_cost = round(patient_stay_length / child_node_2_days_intersection) + 1
-                else:
-                    # +1 cost for being not the directly connected node in the sequence
-                    relative_cost = patient_stay_length + 1
-                child2_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
-                patient_df_edges.update({(row_i.drug, child_row_2.drug): child2_cost})
 
-            path_list.append(patient_df_edges)
+                # prevents self relationships
+                if row_i.drug != child_row_1.drug:
+                    child_node_1_days_intersection = calculate_date_intersection(row_i, child_row_1)
+                    # the more the intersection days the lesser the cost
+                    if child_node_1_days_intersection:
+                        relative_cost = round(patient_stay_length / child_node_1_days_intersection)
+                    else:
+                        relative_cost = patient_stay_length
+                    child1_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
+
+                    # append (node,successor node) tuple to the sequence list
+                    patient_df_sequence.append((row_i.drug, child_row_1.drug))
+                    # append (node,successor node) tuple to the sequence list along with cost
+                    patient_df_edges.update({(row_i.drug, child_row_1.drug): child1_cost})
+
+                if row_i.drug != child_row_2.drug:
+                    child_node_2_days_intersection = calculate_date_intersection(row_i, child_row_2)
+                    if child_node_2_days_intersection:
+                        relative_cost = round(patient_stay_length / child_node_2_days_intersection) + 1
+                    else:
+                        # +1 cost for being not the directly connected node in the sequence
+                        relative_cost = patient_stay_length + 1
+                    child2_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
+                    patient_df_edges.update({(row_i.drug, child_row_2.drug): child2_cost})
+
+            sequence_list.append(patient_df_sequence)
+            edge_list.append(patient_df_edges)
             print(f"Iter {adm_i} completed")
-            if adm_i == 10:
+            if adm_i == 2:
                 break
         # print(nx.is_tree(self.graph))
-        return sequence_list, path_list
+        return sequence_list, edge_list
 
     def cost_function(self, days_intersection_cost: int, path_lengh: int, discharge_location: str):
         """
@@ -99,7 +108,7 @@ def store_sequence(path_list2d):
     adjacency_df.fillna(0, inplace=True)
     for key, value in path_combine_counter.items():
         adjacency_df.at[key[0], key[1]] = value
-    return start_edges_counter, adjacency_df
+    return adjacency_df, start_edges_counter
 
 
 def store_graph(list2d):
@@ -129,19 +138,19 @@ def store_graph(list2d):
             edges_cost_sum[tuple_] += dict_[tuple_]
 
     node_list = sorted(set(node_list))
-    start_node_list = sorted(set(start_node_list))
+    # start_node_list = sorted(set(start_node_list))
 
     adjacency_df = pd.DataFrame(index=node_list, columns=node_list)
     adjacency_df.fillna(0, inplace=True)
-    start_adjacency_df = pd.DataFrame(index=start_node_list, columns=start_node_list)
-    start_adjacency_df.fillna(0, inplace=True)
+    # start_adjacency_df = pd.DataFrame(index=start_node_list, columns=start_node_list)
+    # start_adjacency_df.fillna(0, inplace=True)
 
     for key, value in edges_frequency.items():
         adjacency_df.at[key[0], key[1]] = value
-    for key, value in start_edges_frequency.items():
-        start_adjacency_df.at[key[0], key[1]] = value
+    # for key, value in start_edges_frequency.items():
+    #     start_adjacency_df.at[key[0], key[1]] = value
 
-    return adjacency_df, start_adjacency_df, edges_cost_sum, start_edges_cost_sum
+    return adjacency_df, edges_cost_sum, start_edges_frequency, start_edges_cost_sum
 
 
 def find_path(que, adjacency_matrix, average_path_length, path_list):
@@ -162,6 +171,7 @@ def find_path(que, adjacency_matrix, average_path_length, path_list):
         row = adjacency_matrix.loc[node]
         row_max = max(row)
         bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
+        # if a nodes successor node is the same node,
         successor_list = bool_row.index[bool_row].tolist()
         print('successor_list', successor_list)
         # breakpoint condition, return if no successor
@@ -185,6 +195,7 @@ def find_path(que, adjacency_matrix, average_path_length, path_list):
                 for s in n_successor_list:
                     look_ahead_df.update({(n, s): row_max})
             # select the first max appearing key
+            # TODO issue ('insulin -> ipratropium -> insulin) and repeating starts
             max_node = max(look_ahead_df, key=lambda _key: look_ahead_df[_key])
             path_list.append(max_node[0])
             que.append(max_node[1])

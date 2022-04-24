@@ -3,3 +3,4 @@ venv/
 .gitignore
 data/
 __pycache__/
+pseudocode/

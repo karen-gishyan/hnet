@@ -153,7 +153,8 @@ def store_graph(list2d):
     return adjacency_df, edges_cost_sum, start_edges_frequency, start_edges_cost_sum
 
 
-def check_explored(next_node, explored, que, path_list, adjacency_matrix, average_path_length):
+def check_explored(next_node, explored, que, path_list, adjacency_matrix, average_path_length,
+                   inside_look_ahead=False):
     """
     Includes a recusrive proportion, part of find_path.
     :param next_node:
@@ -165,17 +166,17 @@ def check_explored(next_node, explored, que, path_list, adjacency_matrix, averag
     :return:
     """
     if next_node not in explored:
-        que.append(next_node)
+        if not inside_look_ahead: que.append(next_node)
         path_list.append(next_node)
         explored[next_node] += 1
     # if explored once, we allow to be part of the path only once
-    elif explored[next_node] == 1:
+    elif explored[next_node] <= 2:
         next_node_index = path_list.index(next_node)
         next_node_successor = path_list[next_node_index + 1]
         que.append(next_node)
         path_list.append(next_node)
         explored[next_node] += 1
-        # TODO why does it not complain about find_path(), ok, it is define in search.py
+        # prevent from doing A->B more than once by passing a next_node_successor to be removed later
         find_path(que, adjacency_matrix, average_path_length, path_list, explored,
                   next_node_successor)  # next_node_successor is added
     else:
@@ -185,8 +186,9 @@ def check_explored(next_node, explored, que, path_list, adjacency_matrix, averag
 
 global_exit = False
 
+
 def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
-              next_node_successor=None, exit=False):
+              next_node_successor=None):
     """
     Search the graph for an optimal path by applying a recursive one step look ahead logic on the
     adjacency matrix generated from store graph.
@@ -197,7 +199,6 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
     if global_exit:
         print('The path is', path_list)
         return path_list
-    #TODO logic may need to change
     if len(path_list) >= average_path_length:
         print('The path is', path_list)
         que.clear()
@@ -208,19 +209,23 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
 
     node = que.pop()
     row = adjacency_matrix.loc[node]
+    # remove from max calculation
+    if next_node_successor:
+        row.drop(labels=[next_node_successor], inplace=True)
+        next_node_successor = None  # None to use it when needed and to prevent always entering here
     row_max = max(row)
     bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
     successor_list = bool_row.index[bool_row].tolist()
-    if next_node_successor:
-        successor_list.remove(next_node_successor)
-        next_node_successor = None  # None to use it when needed and to prevent always entering here
     if not successor_list:
         return path_list
     if len(successor_list) == 1:
         next_node = successor_list[0]
         exit = check_explored(next_node, explored, que, path_list, adjacency_matrix, average_path_length)
+        # when path_list is equal to 7, after exiting the main recursion there is some code left
+        # https://python-forum.io/thread-31275.html
+        # to be executed, if execution jumps straight to if exit.
         if exit:
-            global_exit=True
+            global_exit = True
             return
     else:
         # perform a one step look ahead
@@ -235,12 +240,13 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
                 look_ahead_df.update({(n, s): row_max})
         # select the first max appearing key
         # here max_nodes is a tuple instead of a single node
+        # select the first maximum appearing node if there are multiple
         max_nodes = max(look_ahead_df, key=lambda _key: look_ahead_df[_key])
+        # intermediary node during the look ahead should not be appended to the que,
+        # for this reasons we pass inside look ahead
         next_node = max_nodes[0]
-        # TODO here exit return a pointer the function, function is reentered.
-        # TODO why does it then go to the elif of check_explored() function.
-
-        exit = check_explored(next_node, explored, que, path_list, adjacency_matrix, average_path_length)
+        exit = check_explored(next_node, explored, que, path_list, adjacency_matrix, average_path_length,
+                              inside_look_ahead=True)
         if exit:
             global_exit = True
             return

@@ -1,13 +1,6 @@
-import os
-import sys
-
-cwd = os.getcwd()
-if not cwd in sys.path:
-    sys.path.append('.')
-
 from collections import deque, defaultdict
-from source.utils import merge_dfs
-from source.search import Graph, store_sequence, find_path, store_graph, find_path_graph
+from utils import merge_dfs
+from search import Graph, store_sequence, find_path, store_graph, find_path_graph
 
 if __name__ == "__main__":
     #### sample path merging algorithm
@@ -26,7 +19,7 @@ if __name__ == "__main__":
     path_list.append(max_start_edge[1])
     explored[max_start_edge[1]] = 1
     # find_path(que, adjacency_matrix, average_path_length, path_list,explored)
-
+    
     ##########
     df = merge_dfs(drug_name='PNEUMONIA')
     graph = Graph(df)

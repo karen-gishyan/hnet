@@ -1,7 +1,7 @@
 import networkx as nx
 import pandas as pd
 import matplotlib.pyplot as plt
-from source.utils import calculate_date_intersection
+from utils import calculate_date_intersection
 from collections import Counter, defaultdict
 from itertools import chain
 import math

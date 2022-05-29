@@ -167,6 +167,7 @@ def check_explored(recursive_f, **kwargs):
     inside_look_ahead = kwargs.get('inside_look_ahead')
 
     if next_node not in explored:
+        # if inside_look_ahead not passed (is None), append to the que
         if not inside_look_ahead: que.append(next_node)
         path_list.append(next_node)
         explored[next_node] += 1

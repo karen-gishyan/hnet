@@ -32,7 +32,7 @@ def diagnosis_value_counts(value_count=100) -> pd.Series:
     :param int: value_count
     :return: pd. Series
     """
-    df = pd.read_csv('data/ADMISSIONS.csv')
+    df = pd.read_csv('../data/ADMISSIONS.csv')
     unique_values = df.DIAGNOSIS.value_counts()
     unique_values = unique_values[unique_values >= value_count]
     return unique_values
@@ -43,8 +43,8 @@ def merge_dfs(diagnosis_value_counts: pd.Series = None, drug_name=None) -> pd.Da
     Merge admissions and prescriptions on either on a drug list or on a drug name.
     """
     assert diagnosis_value_counts or drug_name, 'Diagnosis_value_counts or drug_name needs to be supplied'
-    admissions = pd.read_csv('data/ADMISSIONS.csv')
-    prescriptions = pd.read_csv('data/PRESCRIPTIONS.csv')
+    admissions = pd.read_csv('../data/ADMISSIONS.csv')
+    prescriptions = pd.read_csv('../data/PRESCRIPTIONS.csv')
     if diagnosis_value_counts:
         admissions = admissions[admissions.DIAGNOSIS.isin(diagnosis_value_counts.index)]
     else:

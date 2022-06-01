@@ -5,6 +5,7 @@ from utils import calculate_date_intersection
 from collections import Counter, defaultdict
 from itertools import chain
 import math
+import sys
 
 
 class Graph():
@@ -29,7 +30,7 @@ class Graph():
             n_drugs = patient_df.shape[0]
             discharge_location = list(patient_df.discharge_location)[0]
             for i, row_i in patient_df.iterrows():
-                if i == n_drugs - 3:  # check this part to again
+                if i == n_drugs - 3:  # check this part again
                     break
                 child_row_1, child_row_2 = patient_df.iloc[i + 1], patient_df.iloc[i + 2]
 
@@ -61,7 +62,7 @@ class Graph():
             sequence_list.append(patient_df_sequence)
             edge_list.append(patient_df_edges)
             print(f"Iter {adm_i} completed")
-            if adm_i == 2:
+            if adm_i == 10:
                 break
         # print(nx.is_tree(self.graph))
         return sequence_list, edge_list
@@ -171,7 +172,10 @@ def check_explored(recursive_f, **kwargs):
         path_list.append(next_node)
         explored[next_node] += 1
     # if explored once, we allow to be part of the path only twice
-    elif explored[next_node] <= 2:
+    elif explored[next_node] <= 3:
+        # if next_node (candidate node) has been previously explored, pass its successor node
+        # to the recursive_f so as it is removed for the max calculation, otherwise will result in a loop
+        # in the sequence
         next_node_index = path_list.index(next_node)
         next_node_successor = path_list[next_node_index + 1]
         que.append(next_node)
@@ -187,7 +191,6 @@ def check_explored(recursive_f, **kwargs):
         return exit
 
 
-global_exit = False
 def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
               next_node_successor=None):
     """
@@ -195,11 +198,7 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
     adjacency matrix generated from store graph.
     :return: path_list
     """
-    # TODO short term solution, needs to change
-    global global_exit
-    if global_exit:
-        print('The path is', path_list)
-        return path_list
+    # generally these statements are not reached and function exits sooner with exit.
     if len(path_list) >= average_path_length:
         print('The path is', path_list)
         que.clear()
@@ -226,8 +225,10 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
                               adjacency_matrix=adjacency_matrix, average_path_length=average_path_length)
         # https://python-forum.io/thread-31275.html
         if exit:
-            global_exit = True
-            return
+            print(path_list)
+            # do sys.exit() to exit globally and disregard tail codes of parent recursive functions
+            sys.exit()
+            # return
     else:
         # perform a one step look ahead
         look_ahead_df = {}
@@ -236,7 +237,7 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
             row_max = max(row)
             bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
             n_successor_list = bool_row.index[bool_row].tolist()
-            print('n_successor_list', n_successor_list)
+            # print('n_successor_list', n_successor_list)
             for s in n_successor_list:
                 look_ahead_df.update({(n, s): row_max})
         # select the first max appearing key
@@ -251,15 +252,17 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
                               adjacency_matrix=adjacency_matrix, average_path_length=average_path_length,
                               inside_look_ahead=True)
         if exit:
-            global_exit = True
-            return
+            print(path_list)
+            sys.exit()
+            # return
         next_node = max_nodes[1]
         exit = check_explored(find_path, next_node=next_node,
                               explored=explored, que=que, path_list=path_list,
                               adjacency_matrix=adjacency_matrix, average_path_length=average_path_length)
         if exit:
-            global_exit = True
-            return
+            print(path_list)
+            sys.exit()
+            # return
     find_path(que, adjacency_matrix, average_path_length, path_list, explored, exit)
 
 

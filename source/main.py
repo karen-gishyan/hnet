@@ -4,20 +4,20 @@ from search import Graph, store_sequence, find_path, store_graph, find_path_grap
 
 if __name__ == "__main__":
     #### sample path merging algorithm
-    path1 = [('A', 'B'), ('B', 'C'), ('C', 'E')]
-    path2 = [('A', 'C'), ('C', 'E'), ('E', 'D')]
-    path3 = [('B', 'F'), ('F', 'G'), ('G', 'E'), ('E', 'F')]
-
-    paths = [i for i in (path1, path2, path3)]
-    average_path_length = round((len(path1) + len(path2) + len(path3)) / 3)
-    adjacency_matrix, start_edges = store_sequence(paths)
-    max_start_edge = max(start_edges, key=lambda _key: start_edges[_key])
-    path_list = []
-    que = deque()
-    explored = defaultdict(int)
-    que.append(max_start_edge[1])
-    path_list.append(max_start_edge[1])
-    explored[max_start_edge[1]] = 1
+    # path1 = [('A', 'B'), ('B', 'C'), ('C', 'E')]
+    # path2 = [('A', 'C'), ('C', 'E'), ('E', 'D')]
+    # path3 = [('B', 'F'), ('F', 'G'), ('G', 'E'), ('E', 'F')]
+    #
+    # paths = [i for i in (path1, path2, path3)]
+    # average_path_length = round((len(path1) + len(path2) + len(path3)) / 3)
+    # adjacency_matrix, start_edges = store_sequence(paths)
+    # max_start_edge = max(start_edges, key=lambda _key: start_edges[_key])
+    # path_list = []
+    # que = deque()
+    # explored = defaultdict(int)
+    # que.append(max_start_edge[1])
+    # path_list.append(max_start_edge[1])
+    # explored[max_start_edge[1]] = 1
     # find_path(que, adjacency_matrix, average_path_length, path_list,explored)
     
     ##########

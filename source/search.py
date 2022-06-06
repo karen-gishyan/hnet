@@ -5,6 +5,7 @@ from utils import calculate_date_intersection
 from collections import Counter, defaultdict
 from itertools import chain
 import math
+import sys
 
 
 class Graph():
@@ -18,8 +19,10 @@ class Graph():
          Construct edges between drug nodes based on the fact if two drugs are used in combination.
          Combination means drugs are applied in the same timeframe.
          """
-        edge_list = []  # total list of edges from each admission
-        sequence_list = []  # drugs as sequences, duplicates removed
+        # total count of drug pairs from each admission
+        edge_list = []
+        # total count of
+        sequence_list = []
         for adm_i, admission in enumerate(self.unique_admissions):
             patient_df = self.df[self.df.hadm_id == admission]
             patient_df.reset_index(inplace=True)
@@ -29,41 +32,39 @@ class Graph():
             n_drugs = patient_df.shape[0]
             discharge_location = list(patient_df.discharge_location)[0]
             for i, row_i in patient_df.iterrows():
-                if i == n_drugs - 3:  # check this part to again
-                    break
-                child_row_1, child_row_2 = patient_df.iloc[i + 1], patient_df.iloc[i + 2]
 
-                # prevents self relationships
-                if row_i.drug != child_row_1.drug:
-                    child_node_1_days_intersection = calculate_date_intersection(row_i, child_row_1)
-                    # the more the intersection days the lesser the cost
-                    if child_node_1_days_intersection:
-                        relative_cost = round(patient_stay_length / child_node_1_days_intersection)
-                    else:
-                        relative_cost = patient_stay_length
-                    child1_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
+                if i <= n_drugs - 2:
+                    child_row_1 = patient_df.iloc[i + 1]
+                    # prevents self relationships
+                    if row_i.drug != child_row_1.drug:
+                        child_node_1_days_intersection = calculate_date_intersection(row_i, child_row_1)
+                        # the more the intersection days the lesser the cost
+                        if child_node_1_days_intersection:
+                            relative_cost = round(patient_stay_length / child_node_1_days_intersection)
+                        else:
+                            relative_cost = patient_stay_length
+                        child1_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
 
-                    # append (node,successor node) tuple to the sequence list
-                    patient_df_sequence.append((row_i.drug, child_row_1.drug))
-                    # append (node,successor node) tuple to the sequence list along with cost
-                    patient_df_edges.update({(row_i.drug, child_row_1.drug): child1_cost})
+                        # append (node,successor node) tuple to the sequence list
+                        patient_df_sequence.append((row_i.drug, child_row_1.drug))
+                        # append (node,successor node) tuple to the sequence list along with cost
+                        patient_df_edges.update({(row_i.drug, child_row_1.drug): child1_cost})
 
-                if row_i.drug != child_row_2.drug:
-                    child_node_2_days_intersection = calculate_date_intersection(row_i, child_row_2)
-                    if child_node_2_days_intersection:
-                        relative_cost = round(patient_stay_length / child_node_2_days_intersection) + 1
-                    else:
-                        # +1 cost for being not the directly connected node in the sequence
-                        relative_cost = patient_stay_length + 1
-                    child2_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
-                    patient_df_edges.update({(row_i.drug, child_row_2.drug): child2_cost})
+                if i <= n_drugs - 3:
+                    child_row_2 = patient_df.iloc[i + 2]
+                    if row_i.drug != child_row_2.drug:
+                        child_node_2_days_intersection = calculate_date_intersection(row_i, child_row_2)
+                        if child_node_2_days_intersection:
+                            relative_cost = round(patient_stay_length / child_node_2_days_intersection) + 1
+                        else:
+                            # +1 cost for being not the directly connected node in the sequence
+                            relative_cost = patient_stay_length + 1
+                        child2_cost = self.cost_function(relative_cost, n_drugs, discharge_location)
+                        patient_df_edges.update({(row_i.drug, child_row_2.drug): child2_cost})
 
             sequence_list.append(patient_df_sequence)
             edge_list.append(patient_df_edges)
             print(f"Iter {adm_i} completed")
-            if adm_i == 2:
-                break
-        # print(nx.is_tree(self.graph))
         return sequence_list, edge_list
 
     def cost_function(self, days_intersection_cost: int, path_lengh: int, discharge_location: str):
@@ -104,6 +105,9 @@ def store_sequence(path_list2d):
     # obtain distinct nodes from list of edge tuples
     node_list = sorted(set(list(chain.from_iterable(path_combine))))
 
+    sorted_path_frequency = dict(sorted(path_combine_counter.items(), key=lambda t: t[1]))
+    max_key_path_frequency = max(path_combine_counter, key=path_combine_counter.get)
+
     adjacency_df = pd.DataFrame(index=node_list, columns=node_list)
     adjacency_df.fillna(0, inplace=True)
     for key, value in path_combine_counter.items():
@@ -116,7 +120,6 @@ def store_graph(list2d):
      Parameters:
          path_list2d: list of dictionaries, where each dict stores edge pairs for each admission.
      """
-
     # start_edges = sorted([tuple_ for dict_ in list(list2d) for (i, tuple_) in enumerate(dict_.keys()) if i == 0])
     start_edges_frequency = defaultdict(int)
     start_edges_cost_sum = defaultdict(int)
@@ -136,19 +139,15 @@ def store_graph(list2d):
             # TODO think if this needs to be part of else
             edges_frequency[tuple_] += 1
             edges_cost_sum[tuple_] += dict_[tuple_]
-
     node_list = sorted(set(node_list))
-    # start_node_list = sorted(set(start_node_list))
 
+    # show the sorted edges_frequency and the max_key
+    sorted_edges_frequency = dict(sorted(edges_frequency.items(), key=lambda t: t[1]))
+    max_key_edges_frequency = max(edges_frequency, key=edges_frequency.get)
     adjacency_df = pd.DataFrame(index=node_list, columns=node_list)
     adjacency_df.fillna(0, inplace=True)
-    # start_adjacency_df = pd.DataFrame(index=start_node_list, columns=start_node_list)
-    # start_adjacency_df.fillna(0, inplace=True)
-
     for key, value in edges_frequency.items():
         adjacency_df.at[key[0], key[1]] = value
-    # for key, value in start_edges_frequency.items():
-    #     start_adjacency_df.at[key[0], key[1]] = value
 
     return adjacency_df, edges_cost_sum, start_edges_frequency, start_edges_cost_sum
 
@@ -172,9 +171,12 @@ def check_explored(recursive_f, **kwargs):
         path_list.append(next_node)
         explored[next_node] += 1
     # if explored once, we allow to be part of the path only twice
-    elif explored[next_node] <= 2:
-        next_node_index = path_list.index(next_node)
-        next_node_successor = path_list[next_node_index + 1]
+    elif explored[next_node] <=10:
+        # if next_node (candidate node) has been previously explored, pass its successor nodes
+        # to the recursive_f so as they are removed for the max calculation, otherwise will result in a loop
+        # in the sequence
+        next_node_indices = [i for i, node in enumerate(path_list) if node == next_node]
+        next_node_successor = [path_list[i + 1] for i in next_node_indices]
         que.append(next_node)
         path_list.append(next_node)
         explored[next_node] += 1
@@ -188,7 +190,6 @@ def check_explored(recursive_f, **kwargs):
         return exit
 
 
-global_exit = False
 def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
               next_node_successor=None):
     """
@@ -196,30 +197,27 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
     adjacency matrix generated from store graph.
     :return: path_list
     """
-    # TODO short term solution, needs to change
-    global global_exit
-    if global_exit:
-        print('The path is', path_list)
-        return path_list
+    # generally these statements are not reached and function exits sooner with exit.
     if len(path_list) >= average_path_length:
         print('The path is', path_list)
-        que.clear()
-        return path_list
+        # que.clear()
+        sys.exit()
     if not len(que):
-        print('The final path for sequence is', path_list)
-        return path_list
+        print('The path is', path_list)
+        sys.exit()
 
     node = que.pop()
     row = adjacency_matrix.loc[node]
     # remove from max calculation
     if next_node_successor:
-        row.drop(labels=[next_node_successor], inplace=True)
+        row.drop(labels=next_node_successor, inplace=True)
         next_node_successor = None  # None to use it when needed and to prevent always entering here
     row_max = max(row)
     bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
     successor_list = bool_row.index[bool_row].tolist()
     if not successor_list:
-        return path_list
+        print('The path is', path_list)
+        sys.exit()
     if len(successor_list) == 1:
         next_node = successor_list[0]
         exit = check_explored(find_path, next_node=next_node,
@@ -227,8 +225,10 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
                               adjacency_matrix=adjacency_matrix, average_path_length=average_path_length)
         # https://python-forum.io/thread-31275.html
         if exit:
-            global_exit = True
-            return
+            print('The path is', path_list)
+            # do sys.exit() to exit globally and disregard tail codes of parent recursive functions
+            sys.exit()
+            # return
     else:
         # perform a one step look ahead
         look_ahead_df = {}
@@ -237,7 +237,7 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
             row_max = max(row)
             bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
             n_successor_list = bool_row.index[bool_row].tolist()
-            print('n_successor_list', n_successor_list)
+            # print('n_successor_list', n_successor_list)
             for s in n_successor_list:
                 look_ahead_df.update({(n, s): row_max})
         # select the first max appearing key
@@ -252,15 +252,17 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
                               adjacency_matrix=adjacency_matrix, average_path_length=average_path_length,
                               inside_look_ahead=True)
         if exit:
-            global_exit = True
-            return
+            print('The path is', path_list)
+            sys.exit()
+            # return
         next_node = max_nodes[1]
         exit = check_explored(find_path, next_node=next_node,
                               explored=explored, que=que, path_list=path_list,
                               adjacency_matrix=adjacency_matrix, average_path_length=average_path_length)
         if exit:
-            global_exit = True
-            return
+            print('The path is', path_list)
+            sys.exit()
+            # return
     find_path(que, adjacency_matrix, average_path_length, path_list, explored, exit)
 
 
@@ -271,43 +273,34 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
     adjacency matrix generated from store graph.
     :return: path_list
     """
-    global global_exit
-    if global_exit:
-        print('The path is', path_list)
-        return path_list
     if len(path_list) >= average_path_length:
-        print('The path is', path_list)
-        que.clear()
-        return path_list
+        print('The path for graph is', path_list)
+        sys.exit()
     if not len(que):
-        print('The final path for graph is', path_list)
-        return path_list
+        print('The path for graph is', path_list)
+        sys.exit()
 
     node = que.pop()
     row = adjacency_matrix.loc[node]
-    row_max = max(row)
     if next_node_successor:
-        row.drop(labels=[next_node_successor], inplace=True)
+        row.drop(labels=next_node_successor, inplace=True)
         next_node_successor = None  # None to use it when needed and to prevent always entering here
+    row_max = max(row)
     bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
     successor_list = bool_row.index[bool_row].tolist()
     print('successor_list', successor_list)
-    # breakpoint condition, return if no successor
-    # TODO the breakpoint logic may need to be more complex
     if not successor_list:
-        print('The path is', path_list)
-        que.clear()
-        return path_list
+        print('The path for graph is', path_list)
+        sys.exit()
     if len(successor_list) == 1:
         next_node = successor_list[0]
-        # TODO there should be check explored for the graph as well
         exit = check_explored(find_path_graph, next_node=next_node,
                               explored=explored, que=que, path_list=path_list,
                               adjacency_matrix=adjacency_matrix, average_path_length=average_path_length,
                               edges_cost_sum=edges_cost_sum)
         if exit:
-            global_exit = True
-            return
+            print('The path for graph is', path_list)
+            sys.exit()
     else:
         # for graphs costs are also taken into account
         # another extra check to select the node with the maximum cost if successor list contains
@@ -324,8 +317,8 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
                                   edges_cost_sum=edges_cost_sum)
 
             if exit:
-                global_exit = True
-                return
+                print('The path for graph is', path_list)
+                sys.exit()
         else:
             # perform a one step look ahead
             look_ahead_df = {}
@@ -346,14 +339,14 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
                                   inside_look_ahead=True)
 
             if exit:
-                global_exit = True
-                return
+                print('The path for graph is', path_list)
+                sys.exit()
             next_node = max_nodes[1]
             exit = check_explored(find_path_graph, next_node=next_node,
                                   explored=explored, que=que, path_list=path_list,
                                   adjacency_matrix=adjacency_matrix, average_path_length=average_path_length,
                                   edges_cost_sum=edges_cost_sum)
             if exit:
-                global_exit = True
-                return
+                print('The path for graph is', path_list)
+                sys.exit()
     find_path_graph(que, adjacency_matrix, average_path_length, path_list, explored, edges_cost_sum)

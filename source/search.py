@@ -65,8 +65,6 @@ class Graph():
             sequence_list.append(patient_df_sequence)
             edge_list.append(patient_df_edges)
             print(f"Iter {adm_i} completed")
-            if adm_i == 50:
-                break
         return sequence_list, edge_list
 
     def cost_function(self, days_intersection_cost: int, path_lengh: int, discharge_location: str):
@@ -172,7 +170,7 @@ def check_explored(recursive_f, **kwargs):
         path_list.append(next_node)
         explored[next_node] += 1
     # if explored once, we allow to be part of the path only twice
-    elif explored[next_node] <= 10:
+    elif explored[next_node] <=10:
         # if next_node (candidate node) has been previously explored, pass its successor nodes
         # to the recursive_f so as they are removed for the max calculation, otherwise will result in a loop
         # in the sequence
@@ -276,7 +274,6 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
     """
     if len(path_list) >= average_path_length:
         print('The path for graph is', path_list)
-        # que.clear()
         sys.exit()
     if not len(que):
         print('The path for graph is', path_list)
@@ -284,10 +281,10 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
 
     node = que.pop()
     row = adjacency_matrix.loc[node]
-    row_max = max(row)
     if next_node_successor:
         row.drop(labels=next_node_successor, inplace=True)
         next_node_successor = None  # None to use it when needed and to prevent always entering here
+    row_max = max(row)
     bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
     successor_list = bool_row.index[bool_row].tolist()
     print('successor_list', successor_list)

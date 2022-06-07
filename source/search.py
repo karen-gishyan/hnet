@@ -5,7 +5,6 @@ from utils import calculate_date_intersection
 from collections import Counter, defaultdict
 from itertools import chain
 import math
-import sys
 
 
 class Graph():
@@ -152,13 +151,15 @@ def store_graph(list2d):
     return adjacency_df, edges_cost_sum, start_edges_frequency, start_edges_cost_sum
 
 
-def check_explored(recursive_f, **kwargs):
+def check_explored(**kwargs):
     """
     :param recursive_f: check_path or check_path_graph
     :param kwargs: kwargs (args) of check_path or check_path_graph
     :return:
     """
     # only has to know about a few kwargs, the rest are passed to the recursive_f.
+    exit = False
+    next_node_successor = None
     next_node = kwargs.get('next_node')
     explored = kwargs.get('explored')
     path_list = kwargs.get('path_list')
@@ -171,7 +172,7 @@ def check_explored(recursive_f, **kwargs):
         path_list.append(next_node)
         explored[next_node] += 1
     # if explored once, we allow to be part of the path only twice
-    elif explored[next_node] <=10:
+    elif explored[next_node] <= 10:
         # if next_node (candidate node) has been previously explored, pass its successor nodes
         # to the recursive_f so as they are removed for the max calculation, otherwise will result in a loop
         # in the sequence
@@ -180,14 +181,10 @@ def check_explored(recursive_f, **kwargs):
         que.append(next_node)
         path_list.append(next_node)
         explored[next_node] += 1
-        # prevent from doing A->B more than once by passing a next_node_successor to be removed later
-        # unpack the packed kwargs, removed next_node and inside_look_ahead as they are not callable kwargs
-        kwargs.pop('next_node')
-        if inside_look_ahead: kwargs.pop('inside_look_ahead')
-        recursive_f(**kwargs, next_node_successor=next_node_successor)
     else:
         exit = True
-        return exit
+
+    return exit, next_node_successor
 
 
 def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
@@ -199,13 +196,11 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
     """
     # generally these statements are not reached and function exits sooner with exit.
     if len(path_list) >= average_path_length:
-        print('The path is', path_list)
-        # que.clear()
-        sys.exit()
+        print(f"The path is {path_list}")
+        return
     if not len(que):
-        print('The path is', path_list)
-        sys.exit()
-
+        print(f"The path is {path_list}")
+        return
     node = que.pop()
     row = adjacency_matrix.loc[node]
     # remove from max calculation
@@ -216,19 +211,18 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
     bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
     successor_list = bool_row.index[bool_row].tolist()
     if not successor_list:
-        print('The path is', path_list)
-        sys.exit()
+        print(f"The path is {path_list}")
+        return
     if len(successor_list) == 1:
         next_node = successor_list[0]
-        exit = check_explored(find_path, next_node=next_node,
-                              explored=explored, que=que, path_list=path_list,
-                              adjacency_matrix=adjacency_matrix, average_path_length=average_path_length)
+        exit, next_node_successor = check_explored(next_node=next_node,
+                                                   explored=explored, que=que, path_list=path_list,
+                                                   adjacency_matrix=adjacency_matrix,
+                                                   average_path_length=average_path_length)
         # https://python-forum.io/thread-31275.html
         if exit:
-            print('The path is', path_list)
-            # do sys.exit() to exit globally and disregard tail codes of parent recursive functions
-            sys.exit()
-            # return
+            print(f"The path is {path_list}")
+            return
     else:
         # perform a one step look ahead
         look_ahead_df = {}
@@ -247,23 +241,24 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
         # intermediary node during the look ahead should not be appended to the que,
         # for this reasons we pass inside look ahead
         next_node = max_nodes[0]
-        exit = check_explored(find_path, next_node=next_node,
-                              explored=explored, que=que, path_list=path_list,
-                              adjacency_matrix=adjacency_matrix, average_path_length=average_path_length,
-                              inside_look_ahead=True)
+        exit, next_node_successor = check_explored(next_node=next_node,
+                                                   explored=explored, que=que, path_list=path_list,
+                                                   adjacency_matrix=adjacency_matrix,
+                                                   average_path_length=average_path_length,
+                                                   inside_look_ahead=True)
         if exit:
-            print('The path is', path_list)
-            sys.exit()
-            # return
+            print(f"The path is {path_list}")
+            return
         next_node = max_nodes[1]
-        exit = check_explored(find_path, next_node=next_node,
-                              explored=explored, que=que, path_list=path_list,
-                              adjacency_matrix=adjacency_matrix, average_path_length=average_path_length)
+        exit, next_node_successor = check_explored(next_node=next_node,
+                                                   explored=explored, que=que, path_list=path_list,
+                                                   adjacency_matrix=adjacency_matrix,
+                                                   average_path_length=average_path_length)
         if exit:
-            print('The path is', path_list)
-            sys.exit()
-            # return
-    find_path(que, adjacency_matrix, average_path_length, path_list, explored, exit)
+            print(f"The path is {path_list}")
+            return
+    # recursive step
+    find_path(que, adjacency_matrix, average_path_length, path_list, explored, next_node_successor)
 
 
 def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explored, edges_cost_sum,
@@ -274,12 +269,11 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
     :return: path_list
     """
     if len(path_list) >= average_path_length:
-        print('The path for graph is', path_list)
-        sys.exit()
+        print(f"The path for graph is {path_list}")
+        return
     if not len(que):
-        print('The path for graph is', path_list)
-        sys.exit()
-
+        print(f"The path for graph is {path_list}")
+        return
     node = que.pop()
     row = adjacency_matrix.loc[node]
     if next_node_successor:
@@ -288,19 +282,19 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
     row_max = max(row)
     bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
     successor_list = bool_row.index[bool_row].tolist()
-    print('successor_list', successor_list)
     if not successor_list:
-        print('The path for graph is', path_list)
-        sys.exit()
+        print(f"The path for graph is {path_list}")
+        return
     if len(successor_list) == 1:
         next_node = successor_list[0]
-        exit = check_explored(find_path_graph, next_node=next_node,
-                              explored=explored, que=que, path_list=path_list,
-                              adjacency_matrix=adjacency_matrix, average_path_length=average_path_length,
-                              edges_cost_sum=edges_cost_sum)
+        exit, next_node_successor = check_explored(next_node=next_node,
+                                                   explored=explored, que=que, path_list=path_list,
+                                                   adjacency_matrix=adjacency_matrix,
+                                                   average_path_length=average_path_length,
+                                                   edges_cost_sum=edges_cost_sum)
         if exit:
-            print('The path for graph is', path_list)
-            sys.exit()
+            print(f"The path for graph is {path_list}")
+            return
     else:
         # for graphs costs are also taken into account
         # another extra check to select the node with the maximum cost if successor list contains
@@ -311,14 +305,14 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
                                 if successor_costs[key] == max(successor_costs.values())]
         if len(successor_costs_list) == 1:
             next_node = successor_list[0]
-            exit = check_explored(find_path_graph, next_node=next_node,
-                                  explored=explored, que=que, path_list=path_list,
-                                  adjacency_matrix=adjacency_matrix, average_path_length=average_path_length,
-                                  edges_cost_sum=edges_cost_sum)
-
+            exit, next_node_successor = check_explored(next_node=next_node,
+                                                       explored=explored, que=que, path_list=path_list,
+                                                       adjacency_matrix=adjacency_matrix,
+                                                       average_path_length=average_path_length,
+                                                       edges_cost_sum=edges_cost_sum)
             if exit:
-                print('The path for graph is', path_list)
-                sys.exit()
+                print(f"The path for graph is {path_list}")
+                return
         else:
             # perform a one step look ahead
             look_ahead_df = {}
@@ -332,21 +326,24 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
                     look_ahead_df.update({(n, s): row_max})
             max_nodes = max(look_ahead_df, key=lambda _key: look_ahead_df[_key])
             next_node = max_nodes[0]
-            exit = check_explored(find_path_graph, next_node=next_node,
-                                  explored=explored, que=que, path_list=path_list,
-                                  adjacency_matrix=adjacency_matrix, average_path_length=average_path_length,
-                                  edges_cost_sum=edges_cost_sum,
-                                  inside_look_ahead=True)
-
+            exit, next_node_successor = check_explored(next_node=next_node,
+                                                       explored=explored, que=que, path_list=path_list,
+                                                       adjacency_matrix=adjacency_matrix,
+                                                       average_path_length=average_path_length,
+                                                       edges_cost_sum=edges_cost_sum,
+                                                       inside_look_ahead=True)
             if exit:
-                print('The path for graph is', path_list)
-                sys.exit()
+                print(f"The path for graph is {path_list}")
+                return
             next_node = max_nodes[1]
-            exit = check_explored(find_path_graph, next_node=next_node,
-                                  explored=explored, que=que, path_list=path_list,
-                                  adjacency_matrix=adjacency_matrix, average_path_length=average_path_length,
-                                  edges_cost_sum=edges_cost_sum)
+            exit, next_node_successor = check_explored(next_node=next_node,
+                                                       explored=explored, que=que, path_list=path_list,
+                                                       adjacency_matrix=adjacency_matrix,
+                                                       average_path_length=average_path_length,
+                                                       edges_cost_sum=edges_cost_sum)
             if exit:
-                print('The path for graph is', path_list)
-                sys.exit()
-    find_path_graph(que, adjacency_matrix, average_path_length, path_list, explored, edges_cost_sum)
+                print(f"The path for graph is {path_list}")
+                return
+    # recursive step
+    find_path_graph(que, adjacency_matrix, average_path_length, path_list, explored, edges_cost_sum,
+                    next_node_successor)

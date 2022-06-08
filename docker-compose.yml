@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  project:
+    container_name: hnet
+    volumes:
+      - .:/hnet
+    image:
+      hnet
+    tty: True

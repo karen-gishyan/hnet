@@ -7,6 +7,8 @@ if __name__ == "__main__":
     graph = Graph(df)
     # return list of sequences as lists, list of edges as dicts
     sequence_list, path_list = graph.search_space()
+    graph.visualize_sequence(sequence_list,0,subset=11)
+    graph.visualize_graph(path_list,0,subset=12)
 
     ### graph
     edge_list_average_len = round(sum([len(dict_) for dict_ in path_list]) / len(path_list))

@@ -1,11 +1,10 @@
 import networkx as nx
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 from utils import calculate_date_intersection
 from collections import Counter, defaultdict
 from itertools import chain
 import math
-
 
 class Graph():
     def __init__(self, diagnosis_df: pd.DataFrame = None):
@@ -54,7 +53,7 @@ class Graph():
                     if row_i.drug != child_row_2.drug:
                         child_node_2_days_intersection = calculate_date_intersection(row_i, child_row_2)
                         if child_node_2_days_intersection:
-                            #TODO think if this should be divided or not
+                            # TODO think if this should be divided or not
                             # Should it be as a strengh(more the better) or cost (lower the better)
                             relative_cost = round(patient_stay_length / child_node_2_days_intersection) + 1
                         else:
@@ -80,12 +79,16 @@ class Graph():
             return days_intersection_cost + math.log2(path_lengh) + 1  # fixed penalty
         return round(days_intersection_cost + math.log2(path_lengh))
 
-    def visualize(self):
-        position = nx.spring_layout(self.graph)
-        nx.draw(self.graph, position, with_labels=True)
-        # labels = nx.get_edge_attributes(self.graph, 'cost')
-        # labels = {edge: self.graph.edges[edge]['cost'] for edge in self.graph.edges}
-        # nx.draw_networkx_edge_labels(self.graph, position, edge_labels=labels)
+    def visualize_sequence(self, sequence_list, index, subset=None):
+        self.graph.add_edges_from(sequence_list[index][:subset])
+        nx.draw(self.graph, with_labels=True)
+        plt.show()
+
+    def visualize_graph(self, path_list, index, subset=None):
+        weighted_edges = [(key[0], key[1], value) for key, value in
+                          dict(list(path_list[index].items())[:subset]).items()]
+        self.graph.add_weighted_edges_from(weighted_edges)
+        nx.draw(self.graph, with_labels=True)
         plt.show()
 
 

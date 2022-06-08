@@ -3,5 +3,6 @@ venv/
 .gitignore
 data/*.csv
 __pycache__/
+images/
 pseudocode/
 token.txt

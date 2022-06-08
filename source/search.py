@@ -54,6 +54,8 @@ class Graph():
                     if row_i.drug != child_row_2.drug:
                         child_node_2_days_intersection = calculate_date_intersection(row_i, child_row_2)
                         if child_node_2_days_intersection:
+                            #TODO think if this should be divided or not
+                            # Should it be as a strengh(more the better) or cost (lower the better)
                             relative_cost = round(patient_stay_length / child_node_2_days_intersection) + 1
                         else:
                             # +1 cost for being not the directly connected node in the sequence
@@ -302,7 +304,7 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
         assert edges_cost_sum, 'costs should be provided'
         successor_costs = {(node, n): edges_cost_sum.get((node, n)) for n in successor_list}
         successor_costs_list = [key[1] for key in successor_costs.keys()
-                                if successor_costs[key] == max(successor_costs.values())]
+                                if successor_costs[key] == min(successor_costs.values())]
         if len(successor_costs_list) == 1:
             next_node = successor_list[0]
             exit, next_node_successor = check_explored(next_node=next_node,

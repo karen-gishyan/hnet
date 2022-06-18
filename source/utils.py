@@ -1,6 +1,8 @@
 from datetimerange import DateTimeRange
+import numpy as np
 import pandas as pd
 from typing import Optional
+from textdistance import ratcliff_obershelp
 
 
 def calculate_date_intersection(node_i, node_j) -> Optional[int]:
@@ -55,3 +57,23 @@ def merge_dfs(diagnosis_value_counts: pd.Series = None, drug_name=None) -> pd.Da
     for column in ['startdate', 'enddate', 'admittime', 'dischtime']:
         df[column] = pd.to_datetime(df[column])
     return df
+
+
+def evaluate(path, graph):
+    """
+    Return 'ratcliff_obershelp' score as a measure of sequence simillarity.
+    :param path: resulting path of the algorithm
+    :param graph: Graph instance
+    :return:
+    """
+    path_string = ''.join(path)
+    similarity_scores = []
+    for adm_i, admission in enumerate(graph.unique_admissions):
+        patient_df = graph.df[graph.df.hadm_id == admission]
+        patient_df.reset_index(inplace=True)
+        drugs_string = ''.join(patient_df.drug)
+        score = ratcliff_obershelp(path_string, drugs_string)
+        similarity_scores.append(score)
+        if adm_i % 20 == 0:
+            print(f'Calculation for {adm_i} done.')
+    return np.mean(similarity_scores)

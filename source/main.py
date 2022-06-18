@@ -1,5 +1,5 @@
 from collections import deque, defaultdict
-from utils import merge_dfs
+from utils import merge_dfs, evaluate
 from search import Graph, store_sequence, find_path, store_graph, find_path_graph
 
 if __name__ == "__main__":
@@ -7,8 +7,8 @@ if __name__ == "__main__":
     graph = Graph(df)
     # return list of sequences as lists, list of edges as dicts
     sequence_list, path_list = graph.search_space()
-    graph.visualize_sequence(sequence_list,0,subset=11)
-    graph.visualize_graph(path_list,0,subset=12)
+    graph.visualize_sequence(sequence_list, 0, subset=11)
+    graph.visualize_graph(path_list, 0, subset=12)
 
     ### graph
     edge_list_average_len = round(sum([len(dict_) for dict_ in path_list]) / len(path_list))
@@ -22,6 +22,8 @@ if __name__ == "__main__":
     explored[max_start_edge[1]] = 1
     path_graph = find_path_graph(que, adjacency_df, edge_list_average_len, path_list, explored, edges_cost_sum)
     print(f'The path for graph is {path_graph}')
+    score = evaluate(path_graph, graph)
+    print(f'The ratcliff_obershelp score is {score}')
 
     ### sequence
     sequence_list_average_len = round(sum([len(list_) for list_ in sequence_list]) / len(sequence_list))
@@ -35,3 +37,5 @@ if __name__ == "__main__":
     explored[max_start_edge[1]] = 1
     path = find_path(que, adjacency_df, sequence_list_average_len, path_list, explored)
     print(f'The path is {path}')
+    score = evaluate(path, graph)
+    print(f'The ratcliff_obershelp score is {score}')

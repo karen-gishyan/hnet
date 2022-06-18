@@ -20,7 +20,8 @@ if __name__ == "__main__":
     que.append(max_start_edge[1])
     path_list.append(max_start_edge[1])
     explored[max_start_edge[1]] = 1
-    find_path_graph(que, adjacency_df, edge_list_average_len, path_list, explored, edges_cost_sum)
+    path_graph = find_path_graph(que, adjacency_df, edge_list_average_len, path_list, explored, edges_cost_sum)
+    print(f'The path for graph is {path_graph}')
 
     ### sequence
     sequence_list_average_len = round(sum([len(list_) for list_ in sequence_list]) / len(sequence_list))
@@ -32,4 +33,5 @@ if __name__ == "__main__":
     que.append(max_start_edge[1])
     path_list.append(max_start_edge[1])
     explored[max_start_edge[1]] = 1
-    find_path(que, adjacency_df, sequence_list_average_len, path_list, explored)
+    path = find_path(que, adjacency_df, sequence_list_average_len, path_list, explored)
+    print(f'The path is {path}')

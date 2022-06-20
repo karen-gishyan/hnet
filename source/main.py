@@ -1,12 +1,20 @@
 from collections import deque, defaultdict
 from utils import merge_dfs, evaluate
 from search import Graph, store_sequence, find_path, store_graph, find_path_graph
+import logging
 
 if __name__ == "__main__":
+    # configure a logger
+    logger = logging.getLogger('hnet')
+    logger.setLevel(logging.INFO)
+    file_handler = logging.FileHandler('info.log')
+    file_handler.setLevel(logging.INFO)
+    logger.addHandler(file_handler)
+
     df = merge_dfs(drug_name='PNEUMONIA')
     graph = Graph(df)
     # return list of sequences as lists, list of edges as dicts
-    sequence_list, path_list = graph.search_space()
+    sequence_list, path_list = graph.search_space(number_of_admissions=5)
     graph.visualize_sequence(sequence_list, 0, subset=11)
     graph.visualize_graph(path_list, 0, subset=12)
 
@@ -20,9 +28,13 @@ if __name__ == "__main__":
     que.append(max_start_edge[1])
     path_list.append(max_start_edge[1])
     explored[max_start_edge[1]] = 1
+
     path_graph = find_path_graph(que, adjacency_df, edge_list_average_len, path_list, explored, edges_cost_sum)
+    logger.info(f'The path for graph is {path_graph}')
     print(f'The path for graph is {path_graph}')
-    score = evaluate(path_graph, graph)
+    # TODO evaluate how more admissions affect the evaluation score
+    score = evaluate(path_graph, graph, number_of_admissions=3)
+    logger.info(f'The ratcliff_obershelp score is {score}')
     print(f'The ratcliff_obershelp score is {score}')
 
     ### sequence
@@ -35,7 +47,10 @@ if __name__ == "__main__":
     que.append(max_start_edge[1])
     path_list.append(max_start_edge[1])
     explored[max_start_edge[1]] = 1
+
     path = find_path(que, adjacency_df, sequence_list_average_len, path_list, explored)
     print(f'The path is {path}')
-    score = evaluate(path, graph)
+    logger.info(f'The path is {path}')
+    score = evaluate(path, graph, number_of_admissions=3)
     print(f'The ratcliff_obershelp score is {score}')
+    logger.info(f'The ratcliff_obershelp score is {score}')

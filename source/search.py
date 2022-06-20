@@ -13,7 +13,7 @@ class Graph():
         self.df = diagnosis_df
         self.unique_admissions = list(diagnosis_df.hadm_id.unique())
 
-    def search_space(self):
+    def search_space(self,number_of_admissions=292):
         """
          Construct edges between drug nodes based on the fact if two drugs are used in combination.
          Combination means drugs are applied in the same timeframe.
@@ -22,7 +22,7 @@ class Graph():
         edge_list = []
         # total count of
         sequence_list = []
-        for adm_i, admission in enumerate(self.unique_admissions):
+        for adm_i, admission in enumerate(self.unique_admissions[:number_of_admissions]):
             patient_df = self.df[self.df.hadm_id == admission]
             patient_df.reset_index(inplace=True)
             patient_stay_length = (patient_df.dischtime[0] - patient_df.admittime[0]).days + 1
@@ -316,7 +316,6 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
                 row_max = max(row)
                 bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
                 n_successor_list = bool_row.index[bool_row].tolist()
-                print('n_successor_list', n_successor_list)
                 for s in n_successor_list:
                     look_ahead_df.update({(n, s): row_max})
             max_nodes = max(look_ahead_df, key=lambda _key: look_ahead_df[_key])

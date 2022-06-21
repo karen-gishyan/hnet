@@ -5,6 +5,7 @@ from utils import calculate_date_intersection
 from collections import Counter, defaultdict
 from itertools import chain
 import math
+import numpy as np
 
 
 class Graph():
@@ -13,7 +14,7 @@ class Graph():
         self.df = diagnosis_df
         self.unique_admissions = list(diagnosis_df.hadm_id.unique())
 
-    def search_space(self,number_of_admissions=292):
+    def search_space(self, number_of_admissions=292):
         """
          Construct edges between drug nodes based on the fact if two drugs are used in combination.
          Combination means drugs are applied in the same timeframe.
@@ -202,9 +203,10 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
     """
     if len(path_list) >= average_path_length:
         return path_list
-    if not len(que):
-        return path_list
 
+    kwargs = {'explored': explored, 'que': que, 'path_list': path_list,
+              'adjacency_matrix': adjacency_matrix,
+              'average_path_length': average_path_length}
     node = que.pop()
     row = adjacency_matrix.loc[node]
     # remove from max calculation
@@ -218,11 +220,8 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
         return path_list
     if len(successor_list) == 1:
         next_node = successor_list[0]
-        exit, next_node_successor = check_explored(next_node=next_node,
-                                                   explored=explored, que=que, path_list=path_list,
-                                                   adjacency_matrix=adjacency_matrix,
-                                                   average_path_length=average_path_length)
-        # https://python-forum.io/thread-31275.html
+        kwargs.update({'next_node': next_node})
+        exit, next_node_successor = check_explored(**kwargs)
         if exit:
             return path_list
     else:
@@ -230,30 +229,28 @@ def find_path(que, adjacency_matrix, average_path_length, path_list, explored,
         look_ahead_df = {}
         for n in successor_list:
             row = adjacency_matrix.loc[n]
-            row_max = max(row)
-            bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
-            n_successor_list = bool_row.index[bool_row].tolist()
-            for s in n_successor_list:
-                look_ahead_df.update({(n, s): row_max})
-        # select the first max appearing key
-        # here max_nodes is a tuple instead of a single node
-        # select the first maximum appearing node if there are multiple
-        max_nodes = max(look_ahead_df, key=lambda _key: look_ahead_df[_key])
-        # intermediary node during the look ahead should not be appended to the que,
-        # for this reasons we pass inside look ahead
-        next_node = max_nodes[0]
-        exit, next_node_successor = check_explored(next_node=next_node,
-                                                   explored=explored, que=que, path_list=path_list,
-                                                   adjacency_matrix=adjacency_matrix,
-                                                   average_path_length=average_path_length,
-                                                   inside_look_ahead=True)
+            look_ahead_df.update({n: max(row)})
+
+        # find maximum value from look ahead nodes
+        max_value = max(look_ahead_df.values())
+        # all nodes which have the value of the maximum node become candidate nodes
+        candidate_nodes = [node for node, value in look_ahead_df.items() if value == max_value]
+        # select node randomly from candidate nodes
+        node = np.random.choice(candidate_nodes)
+        row = adjacency_matrix.loc[node]
+        bool_row = row.apply(lambda val: val == max_value if row_max != 0 else False)
+        successor_list = bool_row.index[bool_row].tolist()
+        # if node has multiple next nodes with the same value, again select randomly
+        node_next_node = np.random.choice(successor_list)
+        next_node = node
+        kwargs.update({'next_node': next_node, 'inside_look_ahead': True})
+        exit, next_node_successor = check_explored(**kwargs)
         if exit:
             return path_list
-        next_node = max_nodes[1]
-        exit, next_node_successor = check_explored(next_node=next_node,
-                                                   explored=explored, que=que, path_list=path_list,
-                                                   adjacency_matrix=adjacency_matrix,
-                                                   average_path_length=average_path_length)
+        next_node = node_next_node
+        kwargs.update({'next_node': next_node})
+        kwargs.pop('inside_look_ahead')
+        exit, next_node_successor = check_explored(**kwargs)
         if exit:
             return path_list
     # recursive step
@@ -269,8 +266,10 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
     """
     if len(path_list) >= average_path_length:
         return path_list
-    if not len(que):
-        return path_list
+
+    kwargs = {'explored': explored, 'que': que, 'path_list': path_list,
+              'adjacency_matrix': adjacency_matrix,
+              'average_path_length': average_path_length, 'edges_cost_sum': edges_cost_sum}
 
     node = que.pop()
     row = adjacency_matrix.loc[node]
@@ -284,11 +283,8 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
         return path_list
     if len(successor_list) == 1:
         next_node = successor_list[0]
-        exit, next_node_successor = check_explored(next_node=next_node,
-                                                   explored=explored, que=que, path_list=path_list,
-                                                   adjacency_matrix=adjacency_matrix,
-                                                   average_path_length=average_path_length,
-                                                   edges_cost_sum=edges_cost_sum)
+        kwargs.update({'next_node': next_node})
+        exit, next_node_successor = check_explored(**kwargs)
         if exit:
             return path_list
     else:
@@ -301,11 +297,8 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
                                 if successor_costs[key] == min(successor_costs.values())]
         if len(successor_costs_list) == 1:
             next_node = successor_list[0]
-            exit, next_node_successor = check_explored(next_node=next_node,
-                                                       explored=explored, que=que, path_list=path_list,
-                                                       adjacency_matrix=adjacency_matrix,
-                                                       average_path_length=average_path_length,
-                                                       edges_cost_sum=edges_cost_sum)
+            kwargs.update({'next_node': next_node})
+            exit, next_node_successor = check_explored(**kwargs)
             if exit:
                 return path_list
         else:
@@ -313,32 +306,30 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
             look_ahead_df = {}
             for n in successor_list:
                 row = adjacency_matrix.loc[n]
-                row_max = max(row)
-                bool_row = row.apply(lambda val: val == row_max if row_max != 0 else False)
-                n_successor_list = bool_row.index[bool_row].tolist()
-                for s in n_successor_list:
-                    look_ahead_df.update({(n, s): row_max})
-            max_nodes = max(look_ahead_df, key=lambda _key: look_ahead_df[_key])
-            next_node = max_nodes[0]
-            exit, next_node_successor = check_explored(next_node=next_node,
-                                                       explored=explored, que=que, path_list=path_list,
-                                                       adjacency_matrix=adjacency_matrix,
-                                                       average_path_length=average_path_length,
-                                                       edges_cost_sum=edges_cost_sum,
-                                                       inside_look_ahead=True)
+                look_ahead_df.update({n: max(row)})
+
+            # find maximum value from look ahead nodes
+            max_value = max(look_ahead_df.values())
+            # all nodes which have the value of the maximum node become candidate nodes
+            candidate_nodes = [node for node, value in look_ahead_df.items() if value == max_value]
+            # select node randomly from candidate nodes
+            node = np.random.choice(candidate_nodes)
+            row = adjacency_matrix.loc[node]
+            bool_row = row.apply(lambda val: val == max_value if row_max != 0 else False)
+            successor_list = bool_row.index[bool_row].tolist()
+            # if node has multiple next nodes with the same value, again select randomly
+            node_next_node = np.random.choice(successor_list)
+            next_node = node
+            kwargs.update({'next_node': next_node, 'inside_look_ahead': True})
+            exit, next_node_successor = check_explored(**kwargs)
             if exit:
                 return path_list
-            next_node = max_nodes[1]
-            exit, next_node_successor = check_explored(next_node=next_node,
-                                                       explored=explored, que=que, path_list=path_list,
-                                                       adjacency_matrix=adjacency_matrix,
-                                                       average_path_length=average_path_length,
-                                                       edges_cost_sum=edges_cost_sum)
+            next_node = node_next_node
+            kwargs.update({'next_node': next_node})
+            kwargs.pop('inside_look_ahead')
+            exit, next_node_successor = check_explored(**kwargs)
             if exit:
                 return path_list
     # recursive step
     return find_path_graph(que, adjacency_matrix, average_path_length, path_list, explored, edges_cost_sum,
                            next_node_successor)
-
-
-

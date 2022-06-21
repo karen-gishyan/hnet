@@ -14,7 +14,7 @@ if __name__ == "__main__":
     df = merge_dfs(drug_name='PNEUMONIA')
     graph = Graph(df)
     # return list of sequences as lists, list of edges as dicts
-    sequence_list, path_list = graph.search_space(number_of_admissions=5)
+    sequence_list, path_list = graph.search_space()
     graph.visualize_sequence(sequence_list, 0, subset=11)
     graph.visualize_graph(path_list, 0, subset=12)
 

@@ -185,7 +185,7 @@ def check_explored(**kwargs):
         # in the sequence
         next_node_indices = [i for i, node in enumerate(path_list) if node == next_node]
         next_node_successor = [path_list[i + 1] for i in next_node_indices]
-        que.append(next_node)
+        if not inside_look_ahead:que.append(next_node)
         path_list.append(next_node)
         explored[next_node] += 1
     else:
@@ -296,13 +296,13 @@ def find_path_graph(que, adjacency_matrix, average_path_length, path_list, explo
         successor_costs_list = [key[1] for key in successor_costs.keys()
                                 if successor_costs[key] == min(successor_costs.values())]
         if len(successor_costs_list) == 1:
-            next_node = successor_list[0]
+            next_node = successor_costs_list[0]
             kwargs.update({'next_node': next_node})
             exit, next_node_successor = check_explored(**kwargs)
             if exit:
                 return path_list
         else:
-            # perform a one step look ahead
+            #TODO this block is not reached if all costs are unique
             look_ahead_df = {}
             for n in successor_list:
                 row = adjacency_matrix.loc[n]

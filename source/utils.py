@@ -76,4 +76,4 @@ def evaluate(path, graph, number_of_admissions=292):
         similarity_scores.append(score)
         if (adm_i+1) % 5 == 0:
             print(f'{adm_i+1}/{number_of_admissions} sequences evaluated.')
-    return np.mean(similarity_scores)
+    return np.mean(similarity_scores), similarity_scores

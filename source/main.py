@@ -33,7 +33,8 @@ if __name__ == "__main__":
     logger.info(f'The path for graph is {path_graph}')
     print(f'The path for graph is {path_graph}')
     # TODO evaluate how more admissions affect the evaluation score
-    score = evaluate(path_graph, graph, number_of_admissions=3)
+    score,similarity_scores = evaluate(path_graph, graph,number_of_admissions=3)
+    logger.info(f'The similarity list is {similarity_scores}')
     logger.info(f'The ratcliff_obershelp score is {score}')
     print(f'The ratcliff_obershelp score is {score}')
 
@@ -51,6 +52,7 @@ if __name__ == "__main__":
     path = find_path(que, adjacency_df, sequence_list_average_len, path_list, explored)
     print(f'The path is {path}')
     logger.info(f'The path is {path}')
-    score = evaluate(path, graph, number_of_admissions=3)
-    print(f'The ratcliff_obershelp score is {score}')
+    score, similarity_scores = evaluate(path, graph,number_of_admissions=3)
+    logger.info(f'The similarity list is {similarity_scores}')
     logger.info(f'The ratcliff_obershelp score is {score}')
+    print(f'The ratcliff_obershelp score is {score}')

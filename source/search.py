@@ -32,7 +32,6 @@ class Graph():
             n_drugs = patient_df.shape[0]
             discharge_location = list(patient_df.discharge_location)[0]
             for i, row_i in patient_df.iterrows():
-
                 if i <= n_drugs - 2:
                     child_row_1 = patient_df.iloc[i + 1]
                     # prevents self relationships
@@ -40,6 +39,9 @@ class Graph():
                         child_node_1_days_intersection = calculate_date_intersection(row_i, child_row_1)
                         # the more the intersection days the lesser the cost
                         if child_node_1_days_intersection:
+                            # some floats can be None
+                            if isinstance(child_node_1_days_intersection,float) and math.isnan(child_node_1_days_intersection):
+                                continue
                             relative_cost = round(patient_stay_length / child_node_1_days_intersection)
                         else:
                             relative_cost = patient_stay_length
@@ -49,12 +51,13 @@ class Graph():
                         patient_df_sequence.append((row_i.drug, child_row_1.drug))
                         # append (node,successor node) tuple to the sequence list along with cost
                         patient_df_edges.update({(row_i.drug, child_row_1.drug): child1_cost})
-
                 if i <= n_drugs - 3:
                     child_row_2 = patient_df.iloc[i + 2]
                     if row_i.drug != child_row_2.drug:
                         child_node_2_days_intersection = calculate_date_intersection(row_i, child_row_2)
                         if child_node_2_days_intersection:
+                            if isinstance(child_node_2_days_intersection,float) and math.isnan(child_node_2_days_intersection):
+                                continue
                             # TODO think if this should be divided or not
                             # Should it be as a strengh(more the better) or cost (lower the better)
                             relative_cost = round(patient_stay_length / child_node_2_days_intersection) + 1

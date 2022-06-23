@@ -1,6 +1,7 @@
 from datetimerange import DateTimeRange
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from typing import Optional
 from textdistance import ratcliff_obershelp
 
@@ -86,3 +87,36 @@ def evaluate(path, graph, number_of_admissions=3):
         if (adm_i + 1) % 5 == 0:
             print(f'{adm_i + 1}/{number_of_admissions} sequences evaluated.')
     return np.mean(similarity_scores), similarity_scores
+
+
+def plot_results():
+    """
+    Visualize the results of the two algorithms for 10 diagnosis.
+    """
+    res_path_graph = pd.read_csv('data/results/path_graph_per_diagnosis_results.csv')
+    res_binary_graph = pd.read_csv('data/results/binary_graph_per_diagnosis_results.csv')
+    drug_names = pd.read_csv('data/unique_admission_per_diagnosis.csv')[:10]
+    ypath = np.array(res_path_graph.values).flatten()
+    ygraph = np.array(res_binary_graph.values).flatten()
+    x = drug_names.diagnosis.values
+    x[5] = 'CORONARY ARTERY BYPASS GRAFT/SDA'
+
+    fig, axs = plt.subplots(1, 2, figsize=(5, 5))
+    axs[0].bar(x, ypath)
+    axs[0].set_xlabel('Diagnosis', labelpad=10)
+    axs[0].set_ylabel('Score', labelpad=10)
+    axs[0].set_title('Path Graph Results')
+    axs[0].tick_params(axis='x', labelrotation=90)
+    for i, j in zip(x, ypath):
+        axs[0].annotate(str(round(j, 2)), xy=(i, j), ha='center', verticalalignment='bottom')
+
+    axs[1].bar(x, ygraph)
+    axs[1].set_xlabel('Diagnosis', labelpad=10)
+    axs[1].set_ylabel('Score', labelpad=10)
+    axs[1].set_title('Binary Graph Results')
+    axs[1].tick_params(axis='x', labelrotation=90)
+    for i, j in zip(x, ygraph):
+        axs[1].annotate(str(round(j, 2)), xy=(i, j), ha='center', verticalalignment='bottom')
+
+    fig.suptitle('Mean Ratcliff-Obershelp score per diagnosis')
+    plt.show()

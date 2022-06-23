@@ -14,7 +14,7 @@ class Graph():
         self.df = diagnosis_df
         self.unique_admissions = list(diagnosis_df.hadm_id.unique())
 
-    def search_space(self, number_of_admissions=292):
+    def search_space(self, number_of_admissions=3):
         """
          Construct edges between drug nodes based on the fact if two drugs are used in combination.
          Combination means drugs are applied in the same timeframe.

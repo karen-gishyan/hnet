@@ -68,7 +68,7 @@ def unique_admission_per_diagnosis(merged_df):
     return sorted
 
 
-def evaluate(path, graph, number_of_admissions=292):
+def evaluate(path, graph, number_of_admissions=3):
     """
     Return 'ratcliff_obershelp' score as a measure of sequence simillarity.
     :param path: resulting path of the algorithm

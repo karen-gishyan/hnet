@@ -1,6 +1,11 @@
+import sys
+import os
+
+sys.path.append(os.getcwd())
+
 from collections import deque, defaultdict
-from utils import merge_dfs, evaluate
-from search import Graph, store_sequence, find_path, store_graph, find_path_graph
+from source.utils import merge_dfs, evaluate
+from source.search import Graph, store_sequence, find_path, store_graph, find_path_graph
 import logging
 
 if __name__ == "__main__":

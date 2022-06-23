@@ -39,16 +39,13 @@ def diagnosis_value_counts(value_count=100) -> pd.Series:
     return unique_values
 
 
-def merge_dfs(diagnosis_value_counts: pd.Series = None, drug_name=None) -> pd.DataFrame:
+def merge_dfs(drug_name=None) -> pd.DataFrame:
     """
     Merge admissions and prescriptions on either on a drug list or on a drug name.
     """
-    assert diagnosis_value_counts or drug_name, 'Diagnosis_value_counts or drug_name needs to be supplied'
     admissions = pd.read_csv('data/ADMISSIONS.csv')
     prescriptions = pd.read_csv('data/PRESCRIPTIONS.csv')
-    if diagnosis_value_counts:
-        admissions = admissions[admissions.DIAGNOSIS.isin(diagnosis_value_counts.index)]
-    else:
+    if drug_name:
         admissions = admissions[admissions.DIAGNOSIS == drug_name]
     df = pd.merge(admissions, prescriptions, on=['HADM_ID']).drop(['SUBJECT_ID_y', 'ROW_ID_y'], axis=1)
     df = df.rename(
@@ -57,6 +54,18 @@ def merge_dfs(diagnosis_value_counts: pd.Series = None, drug_name=None) -> pd.Da
     for column in ['startdate', 'enddate', 'admittime', 'dischtime']:
         df[column] = pd.to_datetime(df[column])
     return df
+
+
+def unique_admission_per_diagnosis(merged_df):
+    """
+    Return pd.Series of diagnosis with their number of unique admissions.
+    :param merged_df:
+    :return:
+    """
+    n_unique_admissions_per_diagnosis = merged_df.groupby('diagnosis')['hadm_id'].nunique()
+    sorted = n_unique_admissions_per_diagnosis.sort_values(ascending=False)
+    sorted.to_csv('data/unique_admission_per_diagnosis.csv')
+    return sorted
 
 
 def evaluate(path, graph, number_of_admissions=292):
@@ -74,6 +83,6 @@ def evaluate(path, graph, number_of_admissions=292):
         drugs_string = ''.join(patient_df.drug)
         score = ratcliff_obershelp(path_string, drugs_string)
         similarity_scores.append(score)
-        if (adm_i+1) % 5 == 0:
-            print(f'{adm_i+1}/{number_of_admissions} sequences evaluated.')
+        if (adm_i + 1) % 5 == 0:
+            print(f'{adm_i + 1}/{number_of_admissions} sequences evaluated.')
     return np.mean(similarity_scores), similarity_scores

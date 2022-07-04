@@ -105,7 +105,7 @@ def plot_results():
     axs[0].bar(x, ypath)
     axs[0].set_xlabel('Diagnosis', labelpad=10)
     axs[0].set_ylabel('Score', labelpad=10)
-    axs[0].set_title('Path Graph Results')
+    axs[0].set_title('Experiment 1 Results')
     axs[0].tick_params(axis='x', labelrotation=90)
     for i, j in zip(x, ypath):
         axs[0].annotate(str(round(j, 2)), xy=(i, j), ha='center', verticalalignment='bottom')
@@ -113,7 +113,7 @@ def plot_results():
     axs[1].bar(x, ygraph)
     axs[1].set_xlabel('Diagnosis', labelpad=10)
     axs[1].set_ylabel('Score', labelpad=10)
-    axs[1].set_title('Binary Graph Results')
+    axs[1].set_title('Experiment 2 Results')
     axs[1].tick_params(axis='x', labelrotation=90)
     for i, j in zip(x, ygraph):
         axs[1].annotate(str(round(j, 2)), xy=(i, j), ha='center', verticalalignment='bottom')

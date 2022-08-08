@@ -44,35 +44,36 @@ if __name__ == "__main__":
         path_graph = find_path_graph(que, adjacency_df, edge_list_average_len, path_list, explored, edges_cost_sum)
         logger.info(f'The path for graph is {path_graph}')
         print(f'The path for graph is {path_graph}')
-        # TODO evaluate how more admissions affect the evaluation score
-        score, similarity_scores = evaluate(path_graph, graph, number_of_admissions=len(graph.unique_admissions))
+        number_of_admissions = list(graph.df[graph.df.discharge_location != 'DEAD/EXPIRED']['hadm_id'].unique())
+        score, similarity_scores = evaluate(path_graph, graph, number_of_admissions=number_of_admissions)
         # logger.info(f'The similarity list is {similarity_scores}')
         logger.info(f'The ratcliff_obershelp score is {score}')
         print(f'The ratcliff_obershelp score is {score}')
         binary_graph_score_per_disease.append(score)
 
-        ### sequence
-        sequence_list_average_len = round(sum([len(list_) for list_ in sequence_list]) / len(sequence_list))
-        adjacency_df, start_edges_frequency = store_sequence(sequence_list)
-        max_start_edge = max(start_edges_frequency, key=lambda _key: start_edges_frequency[_key])
-        explored = defaultdict(int)
-        path_list = []
-        que = deque()
-        que.append(max_start_edge[1])
-        path_list.append(max_start_edge[1])
-        explored[max_start_edge[1]] = 1
+        # ### sequence
+        # sequence_list_average_len = round(sum([len(list_) for list_ in sequence_list]) / len(sequence_list))
+        # adjacency_df, start_edges_frequency = store_sequence(sequence_list)
+        # max_start_edge = max(start_edges_frequency, key=lambda _key: start_edges_frequency[_key])
+        # explored = defaultdict(int)
+        # path_list = []
+        # que = deque()
+        # que.append(max_start_edge[1])
+        # path_list.append(max_start_edge[1])
+        # explored[max_start_edge[1]] = 1
+        #
+        # path = find_path(que, adjacency_df, sequence_list_average_len, path_list, explored)
+        # print(f'The path is {path}')
+        # logger.info(f'The path is {path}')
+        # number_of_admissions = list(graph.df[graph.df.discharge_location != 'DEAD/EXPIRED']['hadm_id'].unique())
+        # score, similarity_scores = evaluate(path, graph, number_of_admissions=number_of_admissions)
+        # # logger.info(f'The similarity list is {similarity_scores}')
+        # logger.info(f'The ratcliff_obershelp score is {score}')
+        # print(f'The ratcliff_obershelp score is {score}')
+        # path_graph_score_per_disease.append(score)
+        #
+        # print('---')
+        # print(f'Diagnosis f{diagnosis} finished.')
 
-        path = find_path(que, adjacency_df, sequence_list_average_len, path_list, explored)
-        print(f'The path is {path}')
-        logger.info(f'The path is {path}')
-        score, similarity_scores = evaluate(path, graph, number_of_admissions=len(graph.unique_admissions))
-        # logger.info(f'The similarity list is {similarity_scores}')
-        logger.info(f'The ratcliff_obershelp score is {score}')
-        print(f'The ratcliff_obershelp score is {score}')
-        path_graph_score_per_disease.append(score)
-
-        print('---')
-        print(f'Diagnosis f{diagnosis} finished.')
-
-    pd.DataFrame(path_graph_score_per_disease).to_csv('path_graph_per_diagnosis_results.csv', index=False)
+    # pd.DataFrame(path_graph_score_per_disease).to_csv('path_graph_per_diagnosis_results.csv', index=False)
     pd.DataFrame(binary_graph_score_per_disease).to_csv('binary_graph_per_diagnosis_results.csv', index=False)

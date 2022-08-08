@@ -81,7 +81,7 @@ class Graph():
         :return:
         """
         if discharge_location == "DEAD/EXPIRED":
-            return days_intersection_cost + math.log2(path_lengh) + 1  # fixed penalty
+            return days_intersection_cost + math.log2(path_lengh) + 100  # fixed penalty
         return round(days_intersection_cost + math.log2(path_lengh))
 
     def visualize_sequence(self, sequence_list, index, subset=None):
